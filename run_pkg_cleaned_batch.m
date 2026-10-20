@@ -4,21 +4,26 @@
 baseCfg = defaultNetworkAConfig();
 
 % ---------------- Batch-level defaults ----------------
-baseCfg.showLivePlot = false;        % typically off for batch
-baseCfg.makeVideo = false;           % turn on only if needed
+baseCfg.L = 100;
+baseCfg.Ntotal = 1000;
+baseCfg.fA = 3;
+baseCfg.fB = 2;
+baseCfg.kRep = 1;
+baseCfg.eqIntegrator = 'damped2nd';
+baseCfg.massEq = 1;
+baseCfg.gammaEq = 0.5;
+baseCfg.showLivePlot = true;        % typically off for batch
+baseCfg.makeVideo = true;           % turn on only if needed
 baseCfg.showFinalHistogram = false;
 baseCfg.saveData = true;
 baseCfg.videoName = 'networkA_formation_v2_cleaned';
 baseCfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
 % ------------------------------------------------------
 
-% Define per-run overrides (edit this list as needed).
-% Example below sweeps xA.
+% Only composition and functionality vary between runs.
 runOverrides = {
-    struct('xA', 0.03), ...
-    struct('xA', 0.05), ...
-    struct('xA', 0.08), ...
-    struct('xA', 0.10)
+    struct('xA', 0.05, 'fA', 3, 'fB', 2), ...
+    struct('xA', 0.10, 'fA', 3, 'fB', 2)
 };
 
 batchRoot = fullfile(pwd, 'batch_runs_pkg_cleaned');
@@ -26,17 +31,20 @@ batchRoot = fullfile(pwd, 'batch_runs_pkg_cleaned');
 fprintf('Batch folder: %s\n', batchDir);
 
 nRuns = numel(runOverrides);
-summary = table('Size', [nRuns, 10], ...
-    'VariableTypes', {'double','string','double','double','double','double','double','double','double','double'}, ...
-    'VariableNames', {'runIndex','runName','xA','Ntotal','fA','nNodes','nBonds','nActiveEnds','ssaTime','runtimeSeconds'});
+summary = table('Size', [nRuns, 16], ...
+    'VariableTypes', {'double','string','double','double','double','double','double', ...
+        'double','double','string','double','double','double','double','double','double'}, ...
+    'VariableNames', {'runIndex','runName','xA','L','Ntotal','fA','fB', ...
+        'gammaEq','massEq','eqIntegrator','kRep','nNodes','nBonds', ...
+        'nActiveEnds','ssaTime','runtimeSeconds'});
 
 allResults = cell(nRuns,1);
 
 for k = 1:nRuns
     cfg = mergeConfig(baseCfg, runOverrides{k});
 
-    runLabel = sprintf('run_%03d_xA_%s_N_%d', ...
-        k, strrep(sprintf('%.4f', cfg.xA), '.', 'p'), cfg.Ntotal);
+    runLabel = sprintf('run_%03d_xA_%s_N_%d_fA_%d_fB_%d', ...
+        k, strrep(sprintf('%.4f', cfg.xA), '.', 'p'), cfg.Ntotal, cfg.fA, cfg.fB);
     [runDir, runName] = createUniqueRunFolder(batchDir, runLabel);
     cfg.outputDir = runDir;
 
@@ -49,8 +57,14 @@ for k = 1:nRuns
     summary.runIndex(k) = k;
     summary.runName(k) = string(runName);
     summary.xA(k) = cfg.xA;
+    summary.L(k) = cfg.L;
     summary.Ntotal(k) = cfg.Ntotal;
     summary.fA(k) = cfg.fA;
+    summary.fB(k) = cfg.fB;
+    summary.gammaEq(k) = cfg.gammaEq;
+    summary.massEq(k) = cfg.massEq;
+    summary.eqIntegrator(k) = string(cfg.eqIntegrator);
+    summary.kRep(k) = cfg.kRep;
     summary.nNodes(k) = size(results.nodes,1);
     summary.nBonds(k) = size(results.bonds,1);
     summary.nActiveEnds(k) = size(results.activeEnds,1);
@@ -63,4 +77,3 @@ save(fullfile(batchDir, 'batch_summary.mat'), 'summary', 'allResults', 'runOverr
 
 fprintf('\nBatch complete: %s\n', batchName);
 disp(summary);
-

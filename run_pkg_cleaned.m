@@ -4,7 +4,7 @@
 cfg = defaultNetworkAConfig();
 
 % ---------------- User-facing inputs ----------------
-cfg.Ntotal = 1000;     % total feed count (crosslinkers + B2)
+cfg.Ntotal = 10000;     % total feed count (crosslinkers + B2)
 cfg.xA = 0.05;         % crosslinker feed mole fraction
 cfg.fA = 3;            % crosslinker functionality
 cfg.fB = 2;            % linker functionality (kept as metadata)
