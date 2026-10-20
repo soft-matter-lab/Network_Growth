@@ -1,6 +1,6 @@
-function F = networkForces(nodes, bonds, b, kT, kRep, rEq, L, repelBondedPairs, useBinning, fullPairThreshold, kRepAnh)
+function F = networkForces(nodes, bonds, b, kT, kRep, rEq, L, repelBondedPairs, useBinning, fullPairThreshold, kRepAnh, chainModel)
 % Net force on each junction:
-% (1) tensile bonded Gaussian spring
+% (1) tensile bonded chain spring (chainModel: 'cohen' or 'gaussian', see chainSpring)
 % (2) repulsion within rEq: force magnitude kRep*s + kRepAnh*s^2, s = rEq - d
 %     (kRepAnh > 0 adds an anharmonic stiffening; 0 recovers harmonic)
 N = size(nodes,1);
@@ -10,6 +10,7 @@ if nargin < 8, repelBondedPairs = true; end
 if nargin < 9, useBinning = true; end
 if nargin < 10, fullPairThreshold = 120; end
 if nargin < 11, kRepAnh = 0; end
+if nargin < 12, chainModel = 'cohen'; end
 
 if ~isempty(bonds)
     sel = bonds(:,1) ~= bonds(:,2);
@@ -19,7 +20,7 @@ if ~isempty(bonds)
         n = max(bonds(sel,3),1);
         img = bonds(sel,4:5);
         rv = nodes(q,1:2) + img * L - nodes(p,1:2);
-        c = 3 * kT ./ (n * b^2);
+        c = chainSpring(sqrt(sum(rv.^2,2)), n, b, kT, chainModel);
         fv = rv .* c;
         F(:,1) = F(:,1) + accumarray([p; q], [ fv(:,1); -fv(:,1)], [N,1]);
         F(:,2) = F(:,2) + accumarray([p; q], [ fv(:,2); -fv(:,2)], [N,1]);

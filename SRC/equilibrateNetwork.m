@@ -22,7 +22,7 @@ vState = zeros(N,2); % second-order state (ignored in overdamped mode)
 
 for it = 1:cfg.maxEq
     F = networkForces(nodes, bonds, cfg.b, cfg.kT, cfg.kRep, rEq, cfg.L, ...
-        cfg.repelBondedPairs, cfg.useRepulsionBinning, cfg.repulsionFullPairThreshold, cfg.kRepAnh);
+        cfg.repelBondedPairs, cfg.useRepulsionBinning,         cfg.repulsionFullPairThreshold, cfg.kRepAnh, cfg.chainModel);
 
     switch integrator
         case 'overdamped'
@@ -71,7 +71,7 @@ end
 
 % Final speed metric at returned coordinates.
 F = networkForces(nodes, bonds, cfg.b, cfg.kT, cfg.kRep, rEq, cfg.L, ...
-    cfg.repelBondedPairs, cfg.useRepulsionBinning, cfg.repulsionFullPairThreshold, cfg.kRepAnh);
+    cfg.repelBondedPairs, cfg.useRepulsionBinning,     cfg.repulsionFullPairThreshold, cfg.kRepAnh, cfg.chainModel);
 if strcmp(integrator, 'overdamped')
     v = cfg.mobility * F;
 else

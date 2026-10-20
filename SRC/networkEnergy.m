@@ -1,4 +1,4 @@
-function [Etotal, Ebond, Erep] = networkEnergy(nodes, bonds, b, kT, kRep, rEq, L, repelBondedPairs, useBinning, fullPairThreshold, kRepAnh)
+function [Etotal, Ebond, Erep] = networkEnergy(nodes, bonds, b, kT, kRep, rEq, L, repelBondedPairs, useBinning, fullPairThreshold, kRepAnh, chainModel)
 % Energy for the force model used during equilibration.
 
 Ebond = 0;
@@ -8,6 +8,7 @@ if nargin < 8, repelBondedPairs = true; end
 if nargin < 9, useBinning = true; end
 if nargin < 10, fullPairThreshold = 120; end
 if nargin < 11, kRepAnh = 0; end
+if nargin < 12, chainModel = 'cohen'; end
 if N < 1
     Etotal = 0;
     return;
@@ -22,7 +23,8 @@ if ~isempty(bonds)
         img = bonds(sel,4:5);
         rv = nodes(q,1:2) + img * L - nodes(p,1:2);
         r = sqrt(sum(rv.^2,2));
-        Ebond = sum(kT .* (3 * r.^2 ./ (2 * n * b^2)));
+        [~, Eb] = chainSpring(r, n, b, kT, chainModel);
+        Ebond = sum(Eb);
     end
 end
 

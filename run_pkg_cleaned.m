@@ -14,6 +14,7 @@ cfg.fB = 2;            % linker functionality (kept as metadata)
 
 cfg.b = 1.6;
 cfg.kT = 4.14;
+cfg.chainModel = 'gaussian';       % 'cohen' (Langevin/Cohen) or 'gaussian'
 
 cfg.kRep = 0.828;          % repulsion strength (increase if you want stronger anti-overlap)
 cfg.kRepAnh = 1.656;        % anharmonic (quadratic-force) stiffening; 0 = harmonic only

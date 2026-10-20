@@ -11,6 +11,7 @@ baseCfg.areaFraction = 0.8;         % Ntotal is computed from L, b, areaFraction
 baseCfg.fA = 3;
 baseCfg.fB = 2;
 baseCfg.kRep = 1;
+baseCfg.chainModel = 'cohen';       % 'cohen' (Langevin/Cohen) or 'gaussian'
 baseCfg.eqIntegrator = 'damped2nd';
 baseCfg.massEq = 1;
 baseCfg.gammaEq = 0.5;

@@ -16,6 +16,9 @@ cfg.allowSelfLoops = false;   % false: a crosslinker cannot bond two of its own 
 % Mechanics
 cfg.b = 5;
 cfg.kT = 4.14;
+% Chain tension model: 'cohen' (Cohen Pade approx. of inverse Langevin, finite
+% extensibility at n*b) or 'gaussian' (linear spring, 3kT r/(n b^2))
+cfg.chainModel = 'cohen';
 cfg.mobility = 1;
 cfg.kRep = 1;
 cfg.dtEq = 0.2;

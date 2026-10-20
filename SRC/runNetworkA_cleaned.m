@@ -283,8 +283,8 @@ if rmsSpeedF >= cfg.tolVfinal
 end
 
 [Etot, Ebond, Erep] = networkEnergy(nodes, bonds, cfg.b, cfg.kT, cfg.kRep, rEq, cfg.L, ...
-    cfg.repelBondedPairs, cfg.useRepulsionBinning, cfg.repulsionFullPairThreshold, cfg.kRepAnh);
-fprintf('Bonded-chain free energy (Eq. 3, Gaussian term only): %.4g kT\n', Ebond);
+    cfg.repelBondedPairs, cfg.useRepulsionBinning,     cfg.repulsionFullPairThreshold, cfg.kRepAnh, cfg.chainModel);
+    fprintf('Bonded-chain free energy (%s): %.4g kT\n', cfg.chainModel, Ebond);
 fprintf('Pairwise repulsion energy: %.4g\n', Erep);
 fprintf('Total model energy (bonded + repulsion): %.4g\n', Etot);
 
