@@ -314,13 +314,8 @@ if recording
     fprintf('Saved movie: %s.mp4\n', videoPathBase);
 end
 
-if cfg.showFinalHistogram && ~isempty(bonds)
-    figure('Color', 'w');
-    histogram(bonds(:,3), 'BinMethod', 'integers', 'FaceColor', [0.3 0.6 0.9]);
-    xlabel('chain length (Kuhn segments)');
-    ylabel('count');
-    grid on;
-    title(sprintf('Chain-length distribution (mean = %.1f Kuhn segments)', mean(bonds(:,3))));
+if ~isempty(bonds)
+    plotChainDistributions(nodes, bonds, cfg, outputDir, cfg.showFinalHistogram);
 end
 
 results = struct();
