@@ -5,11 +5,13 @@ cfg = struct();
 
 % Chemistry / composition
 cfg.L = 100;
-cfg.Ntotal = 1000;
+cfg.Ntotal = [];          % [] = computed from L, b, areaFraction (see resolveNtotal)
+cfg.areaFraction = 0.8;   % Ntotal*pi*b^2/4 = areaFraction*L^2
 cfg.xA = 0.10;
 cfg.fA = 3;
 cfg.fB = 2;
 cfg.kChem = 1;
+cfg.allowSelfLoops = false;   % false: a crosslinker cannot bond two of its own arms together
 
 % Mechanics
 cfg.b = 5;
@@ -31,6 +33,8 @@ cfg.massEq = 1;
 cfg.gammaEq = 0.5;
 
 % Repulsion options
+% Force magnitude = kRep*s + kRepAnh*s^2 with s = rEq - d (0 => purely harmonic)
+cfg.kRepAnh = 0;
 cfg.repelBondedPairs = true;      % also repel directly bonded node pairs
 cfg.useRepulsionBinning = false;  % MATLAB vectorized all-pairs is faster for current problem sizes
 cfg.repulsionFullPairThreshold = 120; % use full all-pairs below this N

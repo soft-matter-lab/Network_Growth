@@ -1,4 +1,4 @@
-function [Etotal, Ebond, Erep] = networkEnergy(nodes, bonds, b, kT, kRep, rEq, L, repelBondedPairs, useBinning, fullPairThreshold)
+function [Etotal, Ebond, Erep] = networkEnergy(nodes, bonds, b, kT, kRep, rEq, L, repelBondedPairs, useBinning, fullPairThreshold, kRepAnh)
 % Energy for the force model used during equilibration.
 
 Ebond = 0;
@@ -7,6 +7,7 @@ N = size(nodes,1);
 if nargin < 8, repelBondedPairs = true; end
 if nargin < 9, useBinning = true; end
 if nargin < 10, fullPairThreshold = 120; end
+if nargin < 11, kRepAnh = 0; end
 if N < 1
     Etotal = 0;
     return;
@@ -28,7 +29,8 @@ end
 if kRep > 0 && rEq > 0 && N > 1
     [ii, ~, ~, d] = repulsionPairs(nodes, bonds, L, rEq, repelBondedPairs, useBinning, fullPairThreshold);
     if ~isempty(ii)
-        Erep = sum(0.5 * kRep .* (rEq - d).^2);
+        s = rEq - d;
+        Erep = sum(0.5 * kRep .* s.^2 + kRepAnh .* s.^3 / 3);
     end
 end
 

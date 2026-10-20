@@ -14,6 +14,7 @@ end
 
 defaults = defaultNetworkAConfig();
 cfg = mergeConfig(defaults, cfg);
+cfg.Ntotal = resolveNtotal(cfg);
 
 outputDir = '';
 if isfield(cfg, 'outputDir') && ~isempty(cfg.outputDir)
@@ -111,6 +112,9 @@ while true
                 n2 = activeEnds(o,4);
 
                 if adjNow(p1,p2)
+                    continue;
+                end
+                if p1 == p2 && ~cfg.allowSelfLoops
                     continue;
                 end
                 if n1 == 0 && n2 == 0
@@ -279,7 +283,7 @@ if rmsSpeedF >= cfg.tolVfinal
 end
 
 [Etot, Ebond, Erep] = networkEnergy(nodes, bonds, cfg.b, cfg.kT, cfg.kRep, rEq, cfg.L, ...
-    cfg.repelBondedPairs, cfg.useRepulsionBinning, cfg.repulsionFullPairThreshold);
+    cfg.repelBondedPairs, cfg.useRepulsionBinning, cfg.repulsionFullPairThreshold, cfg.kRepAnh);
 fprintf('Bonded-chain free energy (Eq. 3, Gaussian term only): %.4g kT\n', Ebond);
 fprintf('Pairwise repulsion energy: %.4g\n', Erep);
 fprintf('Total model energy (bonded + repulsion): %.4g\n', Etot);

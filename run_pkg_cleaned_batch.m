@@ -1,11 +1,13 @@
 % Batch driver for multiple cleaned Network A runs.
 % Each run gets its own unique folder; no files are overwritten.
 
+addpath(fullfile(fileparts(mfilename('fullpath')), 'SRC'));
+
 baseCfg = defaultNetworkAConfig();
 
 % ---------------- Batch-level defaults ----------------
 baseCfg.L = 100;
-baseCfg.Ntotal = 1000;
+baseCfg.areaFraction = 0.8;         % Ntotal is computed from L, b, areaFraction
 baseCfg.fA = 3;
 baseCfg.fB = 2;
 baseCfg.kRep = 1;
@@ -44,6 +46,7 @@ allResults = cell(nRuns,1);
 
 for k = 1:nRuns
     cfg = mergeConfig(baseCfg, runOverrides{k});
+    cfg.Ntotal = resolveNtotal(cfg);
 
     runLabel = sprintf('run_%03d_xA_%s_N_%d_fA_%d_fB_%d', ...
         k, strrep(sprintf('%.4f', cfg.xA), '.', 'p'), cfg.Ntotal, cfg.fA, cfg.fB);

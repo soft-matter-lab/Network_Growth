@@ -1,19 +1,22 @@
 % Main driver for the cleaned Network A workflow.
 % Edit parameters below, then run this file.
 
+addpath(fullfile(fileparts(mfilename('fullpath')), 'SRC'));
+
 cfg = defaultNetworkAConfig();
 
 % ---------------- User-facing inputs ----------------
-cfg.Ntotal = 10000;     % total feed count (crosslinkers + B2)
-cfg.L = 1000;
-cfg.xA = 0.05;         % crosslinker feed mole fraction
+cfg.L = 50;            % box side length
+cfg.areaFraction = 0.8; % Ntotal is computed: Ntotal*pi*b^2/4 = areaFraction*L^2
+cfg.xA = 0.03;         % crosslinker feed mole fraction
 cfg.fA = 3;            % crosslinker functionality
 cfg.fB = 2;            % linker functionality (kept as metadata)
 
 cfg.b = 1.6;
 cfg.kT = 4.14;
 
-cfg.kRep = 0.414;          % repulsion strength (increase if you want stronger anti-overlap)
+cfg.kRep = 0.828;          % repulsion strength (increase if you want stronger anti-overlap)
+cfg.kRepAnh = 1.656;        % anharmonic (quadratic-force) stiffening; 0 = harmonic only
 cfg.eqIntegrator = 'damped2nd'; % 'damped2nd' or 'overdamped'
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
@@ -25,6 +28,8 @@ cfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
 % ----------------------------------------------------
 
 outputRoot = fullfile(pwd, 'runs_pkg_cleaned');
+cfg.Ntotal = resolveNtotal(cfg);
+fprintf('Ntotal = %d (L = %g, b = %g)\n', cfg.Ntotal, cfg.L, cfg.b);
 runLabel = sprintf('single_xA_%s_N_%d', strrep(sprintf('%.4f', cfg.xA), '.', 'p'), cfg.Ntotal);
 [runDir, runName] = createUniqueRunFolder(outputRoot, runLabel);
 cfg.outputDir = runDir;
