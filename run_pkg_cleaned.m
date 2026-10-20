@@ -1,5 +1,6 @@
 % Main driver for the cleaned Network A workflow.
 % Edit parameters below, then run this file.
+%Radhika downloaded this from the original Network_Growth repo and cleaned it up to remove unnecessary dependencies and make it easier to run.
 
 addpath(fullfile(fileparts(mfilename('fullpath')), 'SRC'));
 
