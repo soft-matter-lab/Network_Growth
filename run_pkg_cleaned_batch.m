@@ -12,7 +12,7 @@ baseCfg.kRep = 1;
 baseCfg.eqIntegrator = 'damped2nd';
 baseCfg.massEq = 1;
 baseCfg.gammaEq = 0.5;
-baseCfg.showLivePlot = true;        % typically off for batch
+baseCfg.showLivePlot = false;        % typically off for batch
 baseCfg.makeVideo = true;           % turn on only if needed
 baseCfg.showFinalHistogram = false;
 baseCfg.saveData = true;
@@ -23,7 +23,9 @@ baseCfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
 % Only composition and functionality vary between runs.
 runOverrides = {
     struct('xA', 0.05, 'fA', 3, 'fB', 2), ...
-    struct('xA', 0.10, 'fA', 3, 'fB', 2)
+    struct('xA', 0.10, 'fA', 3, 'fB', 2), ...  
+    struct('xA', 0.15, 'fA', 3, 'fB', 2), ...
+    struct('xA', 0.20, 'fA', 3, 'fB', 2)
 };
 
 batchRoot = fullfile(pwd, 'batch_runs_pkg_cleaned');

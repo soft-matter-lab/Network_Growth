@@ -13,7 +13,7 @@ cfg.kChem = 1;
 
 % Mechanics
 cfg.b = 5;
-cfg.kT = 1;
+cfg.kT = 4.14;
 cfg.mobility = 1;
 cfg.kRep = 1;
 cfg.dtEq = 0.2;

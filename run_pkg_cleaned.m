@@ -5,11 +5,15 @@ cfg = defaultNetworkAConfig();
 
 % ---------------- User-facing inputs ----------------
 cfg.Ntotal = 10000;     % total feed count (crosslinkers + B2)
+cfg.L = 1000;
 cfg.xA = 0.05;         % crosslinker feed mole fraction
 cfg.fA = 3;            % crosslinker functionality
 cfg.fB = 2;            % linker functionality (kept as metadata)
 
-cfg.kRep = 1;          % repulsion strength (increase if you want stronger anti-overlap)
+cfg.b = 1.6;
+cfg.kT = 4.14;
+
+cfg.kRep = 0.414;          % repulsion strength (increase if you want stronger anti-overlap)
 cfg.eqIntegrator = 'damped2nd'; % 'damped2nd' or 'overdamped'
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
