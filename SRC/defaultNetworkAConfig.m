@@ -11,6 +11,14 @@ cfg.xA = 0.10;
 cfg.fA = 3;
 cfg.fB = 2;
 cfg.kChem = 1;
+cfg.kEndEnd = 1;              % multiplier on kChem for end-end (chain-chain / cloud-cloud) bonding
+% Nucleation: a free crosslinker is placed as a new, initially disconnected
+% cluster (fA bare arms). Rate = kNuc * nA * nB / Abox  (= kNuc*C_A*C_B*Abox).
+cfg.randSeed = [];               % integer for reproducible runs; [] = random each run
+cfg.nucleation = false;       % false: single cluster grown from one seed (legacy)
+cfg.kNuc = 0.01;              % nucleation rate constant (relative to kChem)
+cfg.nucAvoidOccupied = true;  % bias new nuclei toward empty regions
+cfg.nucCandidates = 20;       % random sites tried; the one farthest from existing junctions wins
 cfg.allowSelfLoops = false;   % false: a crosslinker cannot bond two of its own arms together
 
 % Mechanics
@@ -34,6 +42,12 @@ cfg.maxEqFinal = 8000;
 cfg.eqIntegrator = 'damped2nd';
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
+
+% Repulsion radius: 'feed' = 0.5*b*sqrt(NB0/NA0) (half RMS chain size)
+%                   'fill' = crosslinker discs of diameter rEq cover
+%                            nodeAreaFraction of the box (2D plane filling)
+cfg.rEqMode = 'feed';
+cfg.nodeAreaFraction = 1.0;
 
 % Repulsion options
 % Force magnitude = kRep*s + kRepAnh*s^2 with s = rEq - d (0 => purely harmonic)

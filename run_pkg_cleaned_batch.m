@@ -11,7 +11,14 @@ baseCfg.areaFraction = 0.8;         % Ntotal is computed from L, b, areaFraction
 baseCfg.fA = 3;
 baseCfg.fB = 2;
 baseCfg.kRep = 1;
+baseCfg.rEqMode = 'feed';           % 'feed' or 'fill' (crosslinker discs fill the box)
+baseCfg.nodeAreaFraction = 1.0;     % 'fill': fraction of box covered by crosslinker discs
 baseCfg.chainModel = 'cohen';       % 'cohen' (Langevin/Cohen) or 'gaussian'
+baseCfg.kEndEnd = 10;               % end-end (cloud-cloud) rate multiplier on kChem; 1 = same as growth
+baseCfg.randSeed = 1;               % base seed; run k uses randSeed+k-1. [] = random
+baseCfg.nucleation = true;          % stochastic nucleation of new clusters (false = single seed)
+baseCfg.kNuc = 0.01;                % nucleation rate constant: rate = kNuc*nA*nB/Abox
+baseCfg.nucAvoidOccupied = true;    % place nuclei away from already-formed regions
 baseCfg.eqIntegrator = 'damped2nd';
 baseCfg.massEq = 1;
 baseCfg.gammaEq = 0.5;
@@ -48,8 +55,9 @@ allResults = cell(nRuns,1);
 for k = 1:nRuns
     cfg = mergeConfig(baseCfg, runOverrides{k});
     cfg.Ntotal = resolveNtotal(cfg);
-
-    runLabel = sprintf('run_%03d_xA_%s_N_%d_fA_%d_fB_%d', ...
+    if ~isempty(cfg.randSeed)
+        cfg.randSeed = cfg.randSeed + k - 1;   % distinct but reproducible per run
+    end = sprintf('run_%03d_xA_%s_N_%d_fA_%d_fB_%d', ...
         k, strrep(sprintf('%.4f', cfg.xA), '.', 'p'), cfg.Ntotal, cfg.fA, cfg.fB);
     [runDir, runName] = createUniqueRunFolder(batchDir, runLabel);
     cfg.outputDir = runDir;

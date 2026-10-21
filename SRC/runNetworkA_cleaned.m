@@ -16,6 +16,10 @@ defaults = defaultNetworkAConfig();
 cfg = mergeConfig(defaults, cfg);
 cfg.Ntotal = resolveNtotal(cfg);
 
+if ~isempty(cfg.randSeed)
+    rng(cfg.randSeed, 'twister');
+end
+
 outputDir = '';
 if isfield(cfg, 'outputDir') && ~isempty(cfg.outputDir)
     outputDir = cfg.outputDir;
@@ -39,14 +43,24 @@ end
 
 % Constant feed-based mean-field repulsion radius.
 nAvgFeed = NB0 / max(NA0, 1);
-rEq = 0.5 * cfg.b * sqrt(nAvgFeed);
+switch lower(cfg.rEqMode)
+    case 'fill'
+        % NA0 discs of diameter rEq cover nodeAreaFraction of the box.
+        rEq = 2 * cfg.L * sqrt(cfg.nodeAreaFraction / (pi * max(NA0, 1)));
+    otherwise
+        rEq = 0.5 * cfg.b * sqrt(nAvgFeed);
+end
 
 nA = NA0 - 1;
 nB = NB0;
 t = 0;
 
-nodes = [cfg.L/2, cfg.L/2, 0];                      % [x,y,degree]
-activeEnds = repmat([cfg.L/2, cfg.L/2, 1, 0], cfg.fA, 1);   % [x,y,parent,n]
+seedPos = [cfg.L/2, cfg.L/2];
+if cfg.nucleation
+    seedPos = cfg.L * rand(1,2);
+end
+nodes = [seedPos, 0];                                % [x,y,degree]
+activeEnds = repmat([seedPos, 1, 0], cfg.fA, 1);     % [x,y,parent,n]
 bonds = zeros(0,5);                                  % [i,j,n,imgX,imgY]
 history = zeros(0,10);                               % [event,t,dt,type,nA,nB,nNodes,nBonds,nActive,eqIters]
 
@@ -74,7 +88,8 @@ eventID = 0;
 while true
     eventID = eventID + 1;
 
-    if isempty(activeEnds)
+    canNucleate = cfg.nucleation && nA > 0 && nB > 0 && cfg.kNuc > 0;
+    if isempty(activeEnds) && ~canNucleate
         break;
     end
 
@@ -130,12 +145,16 @@ while true
                     d2 = sum(dv.^2);
                 end
 
-                wEndEnd = cfg.kChem / (pi * nTot * cfg.b^2) * exp(-d2 / (nTot * cfg.b^2));
+                wEndEnd = cfg.kEndEnd * cfg.kChem / (pi * nTot * cfg.b^2) * exp(-d2 / (nTot * cfg.b^2));
                 if wEndEnd > 1e-14
                     R(end+1,:) = [3, e, o, wEndEnd];
                 end
             end
         end
+    end
+
+    if canNucleate
+        R(end+1,:) = [4, 0, 0, cfg.kNuc * nA * nB / Abox];
     end
 
     if isempty(R)
@@ -161,11 +180,22 @@ while true
     e = R(pick,2);
     o = R(pick,3);
 
-    p = activeEnds(e,3);
-    n = activeEnds(e,4);
+    p = 0;
+    n = 0;
+    if type ~= 4
+        p = activeEnds(e,3);
+        n = activeEnds(e,4);
+    end
     newBond = false;
 
     switch type
+        case 4
+            sitePos = nucleationSite(nodes, cfg);
+            q = size(nodes,1) + 1;
+            nodes(q,:) = [sitePos, 0];
+            activeEnds(end+1:end+cfg.fA,:) = repmat([sitePos, q, 0], cfg.fA, 1);
+            nA = nA - 1;
+
         case 1
             activeEnds(e,4) = n + 1;
             nB = nB - 1;
@@ -211,7 +241,7 @@ while true
     end
 
     nodes(:,3) = computeDegrees(bonds, size(nodes,1));
-    validateNetworkState(nodes, bonds, activeEnds, cfg.fA);
+    validateNetworkState(nodes, bonds, activeEnds, cfg.fA, cfg.nucleation);
 
     if cfg.showLivePlot
         drawMotion(nodes, bonds, cfg.L, activeEnds, viz, cfg.fA, cfg.b);
@@ -233,7 +263,7 @@ while true
             parent = activeEnds(:,3);
             activeEnds(:,1:2) = wrapPoint(nodes(parent,1:2), cfg.L);
         end
-        validateNetworkState(nodes, bonds, activeEnds, cfg.fA);
+        validateNetworkState(nodes, bonds, activeEnds, cfg.fA, cfg.nucleation);
     end
 
     history(end+1,:) = [eventID, t, dtRxn, type, nA, nB, size(nodes,1), size(bonds,1), size(activeEnds,1), eqIters];

@@ -1,6 +1,6 @@
 % Main driver for the cleaned Network A workflow.
 % Edit parameters below, then run this file.
-%Radhika downloaded this from the original Network_Growth repo and cleaned it up to remove unnecessary dependencies and make it easier to run.
+% Radhika downloaded this from the original Network_Growth repo and cleaned it up to remove unnecessary dependencies and make it easier to run.
 
 addpath(fullfile(fileparts(mfilename('fullpath')), 'SRC'));
 
@@ -8,17 +8,27 @@ cfg = defaultNetworkAConfig();
 
 % ---------------- User-facing inputs ----------------
 cfg.L = 50;            % box side length
-cfg.areaFraction = 0.8; % Ntotal is computed: Ntotal*pi*b^2/4 = areaFraction*L^2
-cfg.xA = 0.03;         % crosslinker feed mole fraction
-cfg.fA = 3;            % crosslinker functionality
+cfg.areaFraction = 1.0; % Ntotal is computed: Ntotal*pi*b^2/4 = areaFraction*L^2
+cfg.xA = 0.05;         % crosslinker feed mole fraction
+cfg.fA = 4;            % crosslinker functionality
 cfg.fB = 2;            % linker functionality (kept as metadata)
 
 cfg.b = 1.6;
 cfg.kT = 4.14;
 cfg.chainModel = 'gaussian';       % 'cohen' (Langevin/Cohen) or 'gaussian'
+cfg.kEndEnd = 10;               % end-end (cloud-cloud) rate multiplier on kChem; 1 = same as growth
+
+cfg.randSeed = 99910;               % integer = reproducible; [] = different every run
+
+cfg.nucleation = false;          % stochastic nucleation of new clusters (false = single seed)
+cfg.kNuc = 0.005;                % nucleation rate constant: rate = kNuc*nA*nB/Abox
+cfg.nucAvoidOccupied = true;    % place nuclei away from already-formed regions
 
 cfg.kRep = 0.828;          % repulsion strength (increase if you want stronger anti-overlap)
 cfg.kRepAnh = 1.656;        % anharmonic (quadratic-force) stiffening; 0 = harmonic only
+cfg.rEqMode = 'fill';           % 'feed' (chain-size based) or 'fill' (crosslinker discs fill the box)
+cfg.nodeAreaFraction = 0.9;     % 'fill': fraction of box covered by crosslinker discs
+
 cfg.eqIntegrator = 'damped2nd'; % 'damped2nd' or 'overdamped'
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
