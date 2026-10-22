@@ -20,3 +20,7 @@ bin-release/
 # Simulation output
 batch_runs_*/
 runs_pkg_cleaned/
+SESSION_NOTES.md
+tmp/
+tmp/network_growth_review/manuscript_page_1.png
+tmp/network_growth_review/network_growth_source_2026-10-21.zip

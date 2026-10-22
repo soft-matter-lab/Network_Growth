@@ -14,6 +14,9 @@ end
 
 defaults = defaultNetworkAConfig();
 cfg = mergeConfig(defaults, cfg);
+cfgNom = cfg;
+cfgNom.NtotalScale = 1;
+NtotalNom = resolveNtotal(cfgNom);      % nominal count (no scale), used for rEq in 'fill' mode
 cfg.Ntotal = resolveNtotal(cfg);
 
 if ~isempty(cfg.randSeed)
@@ -34,6 +37,7 @@ Abox = cfg.L^2;
 
 NA0 = round(cfg.xA * cfg.Ntotal);
 NB0 = cfg.Ntotal - NA0;
+NA0nom = round(cfg.xA * NtotalNom);
 
 if mod(cfg.fA * NA0, 2) ~= 0
     warning(['fA*NA0 = %d is odd. Full saturation requires an even total number ' ...
@@ -46,7 +50,8 @@ nAvgFeed = NB0 / max(NA0, 1);
 switch lower(cfg.rEqMode)
     case 'fill'
         % NA0 discs of diameter rEq cover nodeAreaFraction of the box.
-        rEq = 2 * cfg.L * sqrt(cfg.nodeAreaFraction / (pi * max(NA0, 1)));
+        % Nominal (unscaled) crosslinker count, so NtotalScale does not change rEq.
+        rEq = 2 * cfg.L * sqrt(cfg.nodeAreaFraction / (pi * max(NA0nom, 1)));
     otherwise
         rEq = 0.5 * cfg.b * sqrt(nAvgFeed);
 end
@@ -112,7 +117,7 @@ while true
         if nB > 0
             R(end+1,:) = [1, e, 0, cfg.kChem * CM];
         end
-        if nA > 0 && n >= 1
+        if nA > 0 && n >= cfg.minKuhnCrosslink
             R(end+1,:) = [2, e, 0, cfg.fA * cfg.kChem * CX];
         end
     end
@@ -132,7 +137,7 @@ while true
                 if p1 == p2 && ~cfg.allowSelfLoops
                     continue;
                 end
-                if n1 == 0 && n2 == 0
+                if n1 + n2 < 2 * cfg.minKuhnEndEnd
                     continue;
                 end
 

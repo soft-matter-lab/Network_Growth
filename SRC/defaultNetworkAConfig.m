@@ -6,6 +6,7 @@ cfg = struct();
 % Chemistry / composition
 cfg.L = 100;
 cfg.Ntotal = [];          % [] = computed from L, b, areaFraction (see resolveNtotal)
+cfg.NtotalScale = 1;      % multiplier on the computed Ntotal (e.g. 1.1-1.2 to pump particles)
 cfg.areaFraction = 0.8;   % Ntotal*pi*b^2/4 = areaFraction*L^2
 cfg.xA = 0.10;
 cfg.fA = 3;
@@ -14,6 +15,8 @@ cfg.kChem = 1;
 cfg.kEndEnd = 1;              % multiplier on kChem for end-end (chain-chain / cloud-cloud) bonding
 % Nucleation: a free crosslinker is placed as a new, initially disconnected
 % cluster (fA bare arms). Rate = kNuc * nA * nB / Abox  (= kNuc*C_A*C_B*Abox).
+cfg.minKuhnCrosslink = 1;        % min Kuhn segments before a growing end can bond to a free crosslinker
+cfg.minKuhnEndEnd = 1;           % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (resulting chain)
 cfg.randSeed = [];               % integer for reproducible runs; [] = random each run
 cfg.nucleation = false;       % false: single cluster grown from one seed (legacy)
 cfg.kNuc = 0.01;              % nucleation rate constant (relative to kChem)
