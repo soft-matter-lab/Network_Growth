@@ -8,16 +8,22 @@ cfg = defaultNetworkAConfig();
 
 % ---------------- User-facing inputs ----------------
 cfg.L = 50;            % box side length
-cfg.NtotalScale = 1.45;  % multiplier on computed Ntotal (1 = none)
+% NtotalScale calibration guide for fA = 4:
+%   xA = 0.010 (1.0%)  -> NtotalScale = 1.15-1.20
+%   xA = 0.025 (2.5%)  -> NtotalScale = 1.25
+%   xA = 0.050 (5.0%)  -> NtotalScale = 1.25-1.30
+%   xA = 0.075 (7.5%)  -> NtotalScale = 1.35-1.40
+%   xA = 0.100 (10.0%) -> NtotalScale = 1.50-1.60
+cfg.NtotalScale = 1.3;  % multiplier on computed Ntotal (1 = none)
 cfg.areaFraction = 1.0; % Ntotal is computed: Ntotal*pi*b^2/4 = areaFraction*L^2
-cfg.xA = 0.025;         % crosslinker feed mole fraction
+cfg.xA = 0.05;         % crosslinker feed mole fraction
 cfg.fA = 4;            % crosslinker functionality
 cfg.fB = 2;            % linker functionality (kept as metadata)
 
 cfg.b = 1.6;
 cfg.kT = 4.14;
 cfg.chainModel = 'gaussian';       % 'cohen' (Langevin/Cohoen) or 'gaussian'
-cfg.kEndEnd = 5;               % end-end (cloud-cloud) rate multiplier on kChem; 1 = same as growth
+cfg.kEndEnd = 1;               % end-end (cloud-cloud) rate multiplier on kChem; 1 = same as growth
 
 cfg.minKuhnCrosslink = 4;       % min Kuhn segments before termination on a crosslinker
 cfg.minKuhnEndEnd = 2;          % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (new chain >= 6)
