@@ -19,7 +19,9 @@ bin-release/
 
 # Simulation output
 batch_runs_*/
+tests/
 runs_pkg_cleaned/
+replicate_averages/
 SESSION_NOTES.md
 tmp/
 tmp/network_growth_review/manuscript_page_1.png

@@ -65,6 +65,7 @@ cfg.plotEvery = 1;
 cfg.eqPlotEvery = 3;
 cfg.heatGrid = 150;
 cfg.showFinalHistogram = true;
+cfg.saveFinalDistributions = true; % PNG/CSV export; independent of saveData
 
 cfg.makeVideo = true;
 cfg.videoName = 'networkA_formation_v2_cleaned';
@@ -73,4 +74,13 @@ cfg.videoFPS = 12;
 cfg.saveData = true;
 cfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
 cfg.outputDir = '';  % optional run folder; when non-empty, data/movie save inside this folder
+
+% Incremental raw-state dumps (no plotting during capture).
+cfg.saveDumps = false;
+cfg.dumpUsagePercent = 0:5:100; % consumption of initially FREE A, excluding seed
+cfg.dumpEveryEvents = 0;       % 0 disables; 1 captures every SSA reaction
+cfg.dumpTimeInterval = 0;      % 0 disables; first post-event state crossing each interval
+cfg.dumpSaveDistributions = true;
+cfg.dumpSaveNetwork = true;    % unwrapped nodes, image-aware bonds, active ends
+cfg.dumpSaveFinal = true;      % separate state after final mechanical relaxation
 end
