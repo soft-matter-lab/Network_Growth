@@ -1,5 +1,8 @@
-function validateNetworkState(nodes, bonds, activeEnds, fA)
+function validateNetworkState(nodes, bonds, activeEnds, fA, allowDisconnected)
 % Fail immediately if topology violates model rules.
+% allowDisconnected: skip the single-cluster check (needed with nucleation).
+
+if nargin < 5, allowDisconnected = false; end
 
 N = size(nodes,1);
 deg = computeDegrees(bonds, N);
@@ -30,7 +33,7 @@ if ~isempty(activeEnds)
     end
 end
 
-if N > 1
+if N > 1 && ~allowDisconnected
     adj = makeAdjacency(bonds, N);
     seen = false(N,1);
     seen(1) = true;

@@ -7,15 +7,25 @@ baseCfg = defaultNetworkAConfig();
 
 % ---------------- Batch-level defaults ----------------
 baseCfg.L = 100;
+baseCfg.NtotalScale = 1.15;         % multiplier on computed Ntotal (1 = none)
 baseCfg.areaFraction = 0.8;         % Ntotal is computed from L, b, areaFraction
 baseCfg.fA = 3;
 baseCfg.fB = 2;
 baseCfg.kRep = 1;
+baseCfg.rEqMode = 'feed';           % 'feed' or 'fill' (crosslinker discs fill the box)
+baseCfg.nodeAreaFraction = 1.0;     % 'fill': fraction of box covered by crosslinker discs
 baseCfg.chainModel = 'cohen';       % 'cohen' (Langevin/Cohen) or 'gaussian'
+baseCfg.kEndEnd = 10;               % end-end (cloud-cloud) rate multiplier on kChem; 1 = same as growth
+baseCfg.minKuhnCrosslink = 3;       % min Kuhn segments before termination on a crosslinker
+baseCfg.minKuhnEndEnd = 3;          % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (new chain >= 6)
+baseCfg.randSeed = 1;               % base seed; run k uses randSeed+k-1. [] = random
+baseCfg.nucleation = true;          % stochastic nucleation of new clusters (false = single seed)
+baseCfg.kNuc = 0.01;                % nucleation rate constant: rate = kNuc*nA*nB/Abox
+baseCfg.nucAvoidOccupied = true;    % place nuclei away from already-formed regions
 baseCfg.eqIntegrator = 'damped2nd';
 baseCfg.massEq = 1;
 baseCfg.gammaEq = 0.5;
-baseCfg.showLivePlot = true;        % typically off for batch
+baseCfg.showLivePlot = false;        % typically off for batch
 baseCfg.makeVideo = true;           % turn on only if needed
 baseCfg.showFinalHistogram = false;
 baseCfg.saveData = true;
@@ -47,10 +57,12 @@ allResults = cell(nRuns,1);
 
 for k = 1:nRuns
     cfg = mergeConfig(baseCfg, runOverrides{k});
-    cfg.Ntotal = resolveNtotal(cfg);
-
-    runLabel = sprintf('run_%03d_xA_%s_N_%d_fA_%d_fB_%d', ...
-        k, strrep(sprintf('%.4f', cfg.xA), '.', 'p'), cfg.Ntotal, cfg.fA, cfg.fB);
+    NtotalRun = resolveNtotal(cfg);   % label/summary only; the run resolves it itself
+    if ~isempty(cfg.randSeed)
+        cfg.randSeed = cfg.randSeed + k - 1;   % distinct but reproducible per run
+    end
+ = sprintf('run_%03d_xA_%s_N_%d_fA_%d_fB_%d', ...
+        k, strrep(sprintf('%.4f', cfg.xA), '.', 'p'), NtotalRun, cfg.fA, cfg.fB);
     [runDir, runName] = createUniqueRunFolder(batchDir, runLabel);
     cfg.outputDir = runDir;
 
@@ -64,7 +76,7 @@ for k = 1:nRuns
     summary.runName(k) = string(runName);
     summary.xA(k) = cfg.xA;
     summary.L(k) = cfg.L;
-    summary.Ntotal(k) = cfg.Ntotal;
+    summary.Ntotal(k) = NtotalRun;
     summary.fA(k) = cfg.fA;
     summary.fB(k) = cfg.fB;
     summary.gammaEq(k) = cfg.gammaEq;
