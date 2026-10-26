@@ -1,8 +1,9 @@
-function viz = initVisualization(cfg, histT, histA, histB)
+function viz = initVisualization(cfg, histT, histA, histB, visible)
 % Create the two-panel live figure and return handles/grid.
+if nargin < 5, visible = 'on'; end
 
 viz = struct();
-viz.fig = figure('Color', 'w', 'Position', [50 50 1200 600]);
+viz.fig = figure('Color', 'w', 'Position', [50 50 1200 600], 'Visible', visible);
 
 viz.ax1 = subplot(1,2,1);
 hold(viz.ax1, 'on');

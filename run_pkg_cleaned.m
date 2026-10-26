@@ -7,14 +7,14 @@ addpath(fullfile(fileparts(mfilename('fullpath')), 'SRC'));
 cfg = defaultNetworkAConfig();
 
 % ---------------- User-facing inputs ----------------
-cfg.L = 50;            % box side length
+cfg.L = 100;            % box side length
 % NtotalScale calibration guide for fA = 4:
 %   xA = 0.010 (1.0%)  -> NtotalScale = 1.15-1.20
 %   xA = 0.025 (2.5%)  -> NtotalScale = 1.25
 %   xA = 0.050 (5.0%)  -> NtotalScale = 1.25-1.30
 %   xA = 0.075 (7.5%)  -> NtotalScale = 1.35-1.40
 %   xA = 0.100 (10.0%) -> NtotalScale = 1.50-1.60
-cfg.NtotalScale = 1.3;  % multiplier on computed Ntotal (1 = none)
+cfg.NtotalScale = 1.35;  % multiplier on computed Ntotal (1 = none)
 cfg.areaFraction = 1.0; % Ntotal is computed: Ntotal*pi*b^2/4 = areaFraction*L^2
 cfg.xA = 0.05;         % crosslinker feed mole fraction
 cfg.fA = 4;            % crosslinker functionality
@@ -28,7 +28,7 @@ cfg.kEndEnd = 1;               % end-end (cloud-cloud) rate multiplier on kChem;
 cfg.minKuhnCrosslink = 4;       % min Kuhn segments before termination on a crosslinker
 cfg.minKuhnEndEnd = 2;          % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (new chain >= 6)
 
-cfg.randSeed = 225921;               % integer = reproducible; [] = different every run
+cfg.randSeed = 99999;               % integer = reproducible; [] = different every run
 
 cfg.nucleation = false;          % stochastic nucleation of new clusters (false = single seed)
 cfg.kNuc = 0.001;                % nucleation rate constant: rate = kNuc*nA*nB/Abox
@@ -43,10 +43,18 @@ cfg.eqIntegrator = 'damped2nd'; % 'damped2nd' or 'overdamped'
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
 
-cfg.showLivePlot = true;
-cfg.makeVideo = true;
+cfg.showLivePlot = false;
+cfg.makeVideo = false;
 cfg.videoName = 'networkA_formation_v2_cleaned';
 cfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
+% Raw progress snapshots, visualized later with plotNetworkDumps(runDir).
+cfg.saveDumps = true;
+cfg.dumpUsagePercent = 0:5:100; % free-crosslinker consumption; seed excluded
+cfg.dumpEveryEvents = 0;       % set to 1 for every reaction, or N for every N
+cfg.dumpTimeInterval = 0;      % optional SSA-time interval (0 = disabled)
+cfg.dumpSaveDistributions = true;
+cfg.dumpSaveNetwork = true;    % enables network reconstruction and offline RDF
+cfg.dumpSaveFinal = true;
 % ----------------------------------------------------
 
 outputRoot = fullfile(pwd, 'runs_pkg_cleaned');

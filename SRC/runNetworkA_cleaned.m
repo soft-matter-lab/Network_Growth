@@ -14,6 +14,7 @@ end
 
 defaults = defaultNetworkAConfig();
 cfg = mergeConfig(defaults, cfg);
+requestedConfig = cfg; % preserve nominal feed for reproducible replays
 cfgNom = cfg;
 cfgNom.NtotalScale = 1;
 NtotalNom = resolveNtotal(cfgNom);      % nominal count (no scale), used for rEq in 'fill' mode
@@ -38,6 +39,9 @@ Abox = cfg.L^2;
 NA0 = round(cfg.xA * cfg.Ntotal);
 NB0 = cfg.Ntotal - NA0;
 NA0nom = round(cfg.xA * NtotalNom);
+if NA0 < 1
+    error('NetworkGrowth:NoSeed', 'The feed must contain at least one crosslinker for the seed.');
+end
 
 if mod(cfg.fA * NA0, 2) ~= 0
     warning(['fA*NA0 = %d is odd. Full saturation requires an even total number ' ...
@@ -68,6 +72,9 @@ nodes = [seedPos, 0];                                % [x,y,degree]
 activeEnds = repmat([seedPos, 1, 0], cfg.fA, 1);     % [x,y,parent,n]
 bonds = zeros(0,5);                                  % [i,j,n,imgX,imgY]
 history = zeros(0,10);                               % [event,t,dt,type,nA,nB,nNodes,nBonds,nActive,eqIters]
+dumpState = initNetworkDumps(cfg, requestedConfig, NA0, NB0, rEq);
+dumpState = writeNetworkDump(dumpState, nodes, bonds, activeEnds, ...
+    0, t, nA, nB, 'initial');
 
 histT = 0;
 histA = nA;
@@ -90,6 +97,7 @@ end
 runtime = tic;
 
 eventID = 0;
+stopReason = 'no_active_ends';
 while true
     eventID = eventID + 1;
 
@@ -163,6 +171,7 @@ while true
     end
 
     if isempty(R)
+        stopReason = 'no_allowed_events';
         degNow = computeDegrees(bonds, size(nodes,1));
         fprintf('\nSSA JAMMED at t = %.6g\n', t);
         fprintf('Free crosslinkers = %d, free B2 = %d, active ends = %d\n', nA, nB, M);
@@ -276,6 +285,9 @@ while true
     histA(end+1) = nA;
     histB(end+1) = nB;
 
+    dumpState = writeNetworkDump(dumpState, nodes, bonds, activeEnds, ...
+        eventID, t, nA, nB, 'event');
+
     if cfg.showLivePlot && mod(eventID, cfg.plotEvery) == 0
         updateLivePlot(viz, nodes, bonds, activeEnds, cfg, histT, histA, histB);
         drawnow;
@@ -300,6 +312,8 @@ end
 
 nodes(:,3) = computeDegrees(bonds, size(nodes,1));
 unsat = find(nodes(:,3) < cfg.fA);
+dumpState = writeNetworkDump(dumpState, nodes, bonds, activeEnds, ...
+    size(history,1), t, nA, nB, 'final', stopReason);
 elapsed = toc(runtime);
 
 fprintf('\n=== FINAL STATE ===\n');
@@ -349,8 +363,10 @@ if recording
     fprintf('Saved movie: %s.mp4\n', videoPathBase);
 end
 
-if ~isempty(bonds)
-    plotChainDistributions(nodes, bonds, cfg, outputDir, cfg.showFinalHistogram);
+if ~isempty(bonds) && (cfg.saveFinalDistributions || cfg.showFinalHistogram)
+    distributionDir = '';
+    if cfg.saveFinalDistributions, distributionDir = outputDir; end
+    plotChainDistributions(nodes, bonds, cfg, distributionDir, cfg.showFinalHistogram);
 end
 
 results = struct();
@@ -370,6 +386,10 @@ results.nAvgFeed = nAvgFeed;
 results.config = cfg;
 results.runtimeSeconds = elapsed;
 results.outputDir = outputDir;
+results.stopReason = stopReason;
+results.requestedConfig = requestedConfig;
+results.dumpDir = dumpState.directory;
+results.nDumps = dumpState.count;
 results.dataFile = dataPath;
 if recording
     results.videoFile = [videoPathBase '.mp4'];

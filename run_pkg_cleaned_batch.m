@@ -60,7 +60,8 @@ for k = 1:nRuns
     NtotalRun = resolveNtotal(cfg);   % label/summary only; the run resolves it itself
     if ~isempty(cfg.randSeed)
         cfg.randSeed = cfg.randSeed + k - 1;   % distinct but reproducible per run
-    end = sprintf('run_%03d_xA_%s_N_%d_fA_%d_fB_%d', ...
+    end
+  sprintf('run_%03d_xA_%s_N_%d_fA_%d_fB_%d', ...
         k, strrep(sprintf('%.4f', cfg.xA), '.', 'p'), NtotalRun, cfg.fA, cfg.fB);
     [runDir, runName] = createUniqueRunFolder(batchDir, runLabel);
     cfg.outputDir = runDir;
