@@ -130,8 +130,8 @@ The script's `vizOptions` controls these exports:
   **saved snapshot** (the last is always included); `videoFPS` and
   `videoHoldLastSeconds` control playback. `videoPreview` shows rendering live.
 - `saveCheckpointPlots`: one PNG per distinct saved state matching
-  `checkpointUsagePercent` (default `0:5:100`), with network, Kuhn-count and
-  end-to-end histograms. Several crossed milestones can share
+  `checkpointUsagePercent` (default `0:5:100`), with network, chain-number and
+  weight-fraction histograms, and 2D displacement. Several crossed milestones can share
   one state/PNG. `checkpoint_index.csv` maps the files to requested/actual usage.
 - `saveFinalPlot`: a separate `final_state.png` for the final relaxed network.
 - `saveComparison`: `distribution_comparison.png`, overlaying Kuhn-count,
@@ -140,23 +140,49 @@ The script's `vizOptions` controls these exports:
   `0:5:100` for all checkpoints. `population` chooses the contour population and
   `showComparisonFigure` controls whether the comparison stays open.
 
-Checkpoint and final-state figures contain three panels: the network on the
-left, contour length (Kuhn count) at upper right, and end-to-end distance at lower
-right. Histogram **bins and x/y limits stay fixed across all snapshots**. The
-visualizer scans every saved state, including final relaxation, once for ranges
-and once for peak bin probabilities. Each histogram has its own fixed probability-axis limits.
-Each bin height is its count divided by the total sample count for that plot in
-that snapshot; the title reports N. With the full range, heights sum to one.
-This is probability per bin, not density (which additionally divides by bin
-width). Normalization only rescales heights and preserves within-snapshot shape
-for unchanged bins. Empty populations are marked "No samples". Explicitly
-cropped ranges retain the original denominator, so visible probabilities can
-sum to less than one. Raw dump samples are unchanged.
-Set `vizOptions.kuhnXLim`, `vizOptions.endToEndXLim`, and
-`vizOptions.kuhnYLim` / `vizOptions.endToEndYLim` to explicit two-element ranges to compare different
+Checkpoint and final-state figures contain four panels: network (upper left),
+chain-number fraction versus Kuhn count (upper right), chain weight fraction
+versus Kuhn count (lower left), and
+a 2D end-to-end displacement histogram (lower right).
+Histogram **bins and x/y limits stay fixed across all snapshots**. The
+visualizer scans the saved states, including final relaxation, to determine ranges
+and peak bin probabilities. Each histogram has its own fixed probability-axis limits.
+The number-fraction panel divides bin chain count by the number of completed
+chains; its title reports N. The weight-fraction panel uses
+`w(n) = n * numberOfChainsWithLength(n) / sum(completed.kuhnCount)`.
+It answers: what fraction of completed-chain Kuhn segments belong to chains of
+this length? For a bin spanning several lengths, the numerator is the sum of
+the actual n values of all chains in that bin, not count times bin center.
+The denominator includes **only completed chains**, excluding dangling chains,
+free monomers and junction mass. This is segment-weighted fraction, with the
+total segment count shown in the title. Longer chains contribute more weight.
+Both distributions sum to one over the full range when their denominators are
+positive; these are fractions per bin, not densities. Empty/zero-segment
+populations are marked as unavailable. Explicitly cropped ranges retain the
+full denominator, so visible fractions can sum to less than one.
+Raw dump samples and the separate overlay/replicate-average plots are unchanged.
+Set `vizOptions.kuhnXLim`, `vizOptions.weightXLim`, and
+`vizOptions.kuhnYLim` / `vizOptions.weightYLim` to explicit two-element ranges to compare different
 runs; `[]` chooses common ranges automatically within the selected run.
-`endToEndBins` sets the shared end-to-end bin count. Resolved bins/limits are
+Both length panels use integer-centered bins. Resolved bins/limits are
 saved in `visualization_report.mat` as `report.histogramStyle`.
+
+The 2D panel translates the first endpoint of each completed bond to (0,0) and
+bins the other endpoint at `dv = x_j + image*L - x_i`. Translation preserves
+the bond's direction: vectors are neither rotated nor wrapped to a new minimum
+image. There is one point per bond; reversing the stored endpoint order reverses
+its sign. No mirrored points are added. Color is bin count divided by that
+snapshot's total bond count (probability per 2D bin, not probability density).
+The origin is marked, both axes have equal spatial scale, and bins, symmetric
+coordinate ranges and color limits are held fixed across all saved states.
+`displacementBins` sets bins per axis; `displacementLimit = R` fixes both axes to
+`[-R,R]`; `displacementCLim` fixes the probability color range. Empty limits use
+run-wide automatic values. Cropping retains the full sample denominator.
+
+New distribution payloads include `completed.endToEndVector` (columns dx, dy).
+Older snapshots can reconstruct these vectors from nodes, bonds and periodic
+images. Older distribution-only dumps contain magnitudes without directions;
+the panel reports unavailable data rather than inventing directions.
 
 Outputs go to a new `postprocessing/visualization_<timestamp>` folder under the
 run. Set `vizOptions.outputRoot` to use another disk or directory. Saved dumps

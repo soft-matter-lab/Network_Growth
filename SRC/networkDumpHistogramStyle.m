@@ -4,9 +4,16 @@ function style = networkDumpHistogramStyle(source, options)
 % Directory inputs are scanned one snapshot at a time to bound memory use.
 if nargin < 2, options = struct(); end
 options = mergeConfig(struct('kuhnXLim',[],'endToEndXLim',[], ...
-    'histogramYLim',[],'kuhnYLim',[],'endToEndYLim',[],'endToEndBins',30),options);
+    'histogramYLim',[],'kuhnYLim',[],'endToEndYLim',[],'endToEndBins',30, ...
+    'displacementLimit',[],'displacementBins',40,'displacementCLim',[], ...
+    'weightXLim',[],'weightYLim',[]),options);
 validateattributes(options.endToEndBins,{'numeric'},{'scalar','integer','positive','finite'});
-names = {'kuhnXLim','endToEndXLim','histogramYLim','kuhnYLim','endToEndYLim'};
+validateattributes(options.displacementBins,{'numeric'},{'scalar','integer','positive','finite'});
+if ~isempty(options.displacementLimit)
+    validateattributes(options.displacementLimit,{'numeric'},{'scalar','real','positive','finite'});
+end
+names = {'kuhnXLim','endToEndXLim','histogramYLim','kuhnYLim','endToEndYLim', ...
+    'displacementCLim','weightXLim','weightYLim'};
 for j = 1:numel(names)
     limits = options.(names{j});
     if ~isempty(limits)
@@ -22,13 +29,15 @@ else
     [files,~,dumpDir] = listNetworkDumpFiles(source);
     count = numel(files);
 end
-maxN = 1; maxR = 1;
+maxN = 1; maxR = 1; maxComponent = 0;
 for k = 1:count
     s = getSnapshot(source,files,dumpDir,k);
     if isfield(s,'completed')
         maxN = max([maxN;s.completed.kuhnCount(:)]);
         maxR = max([maxR;s.completed.endToEnd(:)]);
     end
+    dv = networkDumpDisplacements(s);
+    maxComponent = max([maxComponent;abs(dv(:))]);
 end
 style = struct();
 style.normalization = 'probability';
@@ -37,8 +46,41 @@ if isempty(style.kuhnXLim), style.kuhnXLim = [0 ceil(maxN)+1]; end
 style.endToEndXLim = options.endToEndXLim;
 if isempty(style.endToEndXLim), style.endToEndXLim = [0 1.05*maxR]; end
 style.nEdges = (floor(style.kuhnXLim(1))-.5):1:(ceil(style.kuhnXLim(2))+.5);
+style.weightXLim = options.weightXLim;
+if isempty(style.weightXLim), style.weightXLim = style.kuhnXLim; end
+style.weightEdges = (floor(style.weightXLim(1))-.5):1:(ceil(style.weightXLim(2))+.5);
+style.weightYLim = options.weightYLim;
+if isempty(style.weightYLim)
+    peakWeight = 0;
+    for k = 1:count
+        s = getSnapshot(source,files,dumpDir,k);
+        if isfield(s,'completed')
+            fraction = chainWeightFractions(s.completed.kuhnCount,style.weightEdges);
+            peakWeight = max([peakWeight,fraction]);
+        end
+    end
+    style.weightYLim = [0 max(.05,ceil(110*peakWeight)/100)];
+end
 style.rEdges = linspace(style.endToEndXLim(1),style.endToEndXLim(2),options.endToEndBins+1);
 style.histogramYLim = options.histogramYLim;
+limit = options.displacementLimit;
+if isempty(limit), limit = 1.05*maxComponent; end
+if limit<=0, limit = 1; end
+style.displacementLim = [-limit limit];
+style.displacementEdges = linspace(-limit,limit,options.displacementBins+1);
+style.displacementCLim = options.displacementCLim;
+if isempty(style.displacementCLim)
+    peakXY = 0;
+    for k = 1:count
+        s = getSnapshot(source,files,dumpDir,k);
+        dv = networkDumpDisplacements(s);
+        if ~isempty(dv)
+            pxy = histcounts2(dv(:,1),dv(:,2),style.displacementEdges,style.displacementEdges)/size(dv,1);
+            peakXY = max([peakXY;pxy(:)]);
+        end
+    end
+    style.displacementCLim = [0 max(.001,peakXY)];
+end
 if isempty(style.histogramYLim)
     peakN = 0; peakR = 0;
     for k = 1:count
