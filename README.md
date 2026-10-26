@@ -144,7 +144,14 @@ Checkpoint and final-state figures contain three panels: the network on the
 left, contour length (Kuhn count) at upper right, and end-to-end distance at lower
 right. Histogram **bins and x/y limits stay fixed across all snapshots**. The
 visualizer scans every saved state, including final relaxation, once for ranges
-and once for peak bin counts. Each histogram has its own fixed count-axis limits.
+and once for peak bin probabilities. Each histogram has its own fixed probability-axis limits.
+Each bin height is its count divided by the total sample count for that plot in
+that snapshot; the title reports N. With the full range, heights sum to one.
+This is probability per bin, not density (which additionally divides by bin
+width). Normalization only rescales heights and preserves within-snapshot shape
+for unchanged bins. Empty populations are marked "No samples". Explicitly
+cropped ranges retain the original denominator, so visible probabilities can
+sum to less than one. Raw dump samples are unchanged.
 Set `vizOptions.kuhnXLim`, `vizOptions.endToEndXLim`, and
 `vizOptions.kuhnYLim` / `vizOptions.endToEndYLim` to explicit two-element ranges to compare different
 runs; `[]` chooses common ranges automatically within the selected run.

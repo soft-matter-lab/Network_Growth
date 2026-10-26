@@ -24,8 +24,8 @@ vizOptions.saveFinalPlot = true; % final state after relaxation, separate from 1
 % [] chooses a shared range automatically; set limits to compare different runs.
 vizOptions.kuhnXLim = [];        % contour length n, e.g. [0 100]
 vizOptions.endToEndXLim = [];    % end-to-end distance, e.g. [0 30]
-vizOptions.kuhnYLim = [];        % fixed Kuhn-count y range, e.g. [0 50]
-vizOptions.endToEndYLim = [];    % separate fixed end-to-end y range, e.g. [0 20]
+vizOptions.kuhnYLim = [];        % fixed probability-per-bin y range, e.g. [0 .5]
+vizOptions.endToEndYLim = [];    % separate fixed probability y range, e.g. [0 .2]
 vizOptions.endToEndBins = 30;    % shared end-to-end bins
 
 % Overlaid distributions: Kuhn counts, contour lengths n*b, end-to-end lengths.

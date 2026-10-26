@@ -1,5 +1,5 @@
 function [fig, rdf] = plotNetworkDump(snapshotOrFile, options)
-% Plot one saved state: periodic network and two completed-chain histograms.
+% Plot one saved state: periodic network and per-snapshot probability histograms.
 % Pass histogramStyle from networkDumpHistogramStyle for shared bins/axes.
 % A filename inside a dumps folder automatically uses that run's shared axes.
 % The optional second output returns numerical RDF data only; no RDF is plotted.
@@ -40,9 +40,12 @@ end
 ax.Tag = 'network';
 ax = nexttile(layout,2);
 if isfield(s,'completed')
-    histogram(ax,s.completed.kuhnCount,style.nEdges);
-    xlabel(ax,'n (Kuhn segments)'); ylabel(ax,'chain count');
-    title(ax,'Completed-chain contour length'); grid(ax,'on');
+    histogram(ax,s.completed.kuhnCount,style.nEdges,'Normalization','probability');
+    xlabel(ax,'n (Kuhn segments)'); ylabel(ax,'probability per bin');
+    title(ax,sprintf('Completed-chain contour length (N = %d)',numel(s.completed.kuhnCount))); grid(ax,'on');
+    if isempty(s.completed.kuhnCount)
+        text(ax,.5,.5,'No samples','Units','normalized','HorizontalAlignment','center');
+    end
     xlim(ax,style.kuhnXLim); ylim(ax,style.kuhnYLim);
 else
     text(ax,.5,.5,'Distribution payload was disabled','HorizontalAlignment','center'); axis(ax,'off');
@@ -50,8 +53,11 @@ end
 ax.Tag = 'kuhnHistogram';
 ax = nexttile(layout,4);
 if isfield(s,'completed')
-    histogram(ax,s.completed.endToEnd,style.rEdges); xlabel(ax,'end-to-end distance r');
-    ylabel(ax,'chain count'); title(ax,'Completed chains'); grid(ax,'on');
+    histogram(ax,s.completed.endToEnd,style.rEdges,'Normalization','probability'); xlabel(ax,'end-to-end distance r');
+    ylabel(ax,'probability per bin'); title(ax,sprintf('Completed chains (N = %d)',numel(s.completed.endToEnd))); grid(ax,'on');
+    if isempty(s.completed.endToEnd)
+        text(ax,.5,.5,'No samples','Units','normalized','HorizontalAlignment','center');
+    end
     xlim(ax,style.endToEndXLim); ylim(ax,style.endToEndYLim);
 else
     text(ax,.5,.5,'Distribution payload was disabled','HorizontalAlignment','center'); axis(ax,'off');

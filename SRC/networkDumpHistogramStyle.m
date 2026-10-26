@@ -31,6 +31,7 @@ for k = 1:count
     end
 end
 style = struct();
+style.normalization = 'probability';
 style.kuhnXLim = options.kuhnXLim;
 if isempty(style.kuhnXLim), style.kuhnXLim = [0 ceil(maxN)+1]; end
 style.endToEndXLim = options.endToEndXLim;
@@ -43,12 +44,13 @@ if isempty(style.histogramYLim)
     for k = 1:count
         s = getSnapshot(source,files,dumpDir,k);
         if isfield(s,'completed')
-            peakN = max([peakN,histcounts(s.completed.kuhnCount,style.nEdges)]);
-            peakR = max([peakR,histcounts(s.completed.endToEnd,style.rEdges)]);
+            n = s.completed.kuhnCount; r = s.completed.endToEnd;
+            if ~isempty(n), peakN = max([peakN,histcounts(n,style.nEdges)/numel(n)]); end
+            if ~isempty(r), peakR = max([peakR,histcounts(r,style.rEdges)/numel(r)]); end
         end
     end
-    style.kuhnYLim = [0 max(1,ceil(1.1*peakN))];
-    style.endToEndYLim = [0 max(1,ceil(1.1*peakR))];
+    style.kuhnYLim = [0 max(.05,ceil(110*peakN)/100)];
+    style.endToEndYLim = [0 max(.05,ceil(110*peakR)/100)];
     style.histogramYLim = [0 max(style.kuhnYLim(2),style.endToEndYLim(2))]; % legacy summary
 else
     style.kuhnYLim = style.histogramYLim;

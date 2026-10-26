@@ -2,11 +2,11 @@
 addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
 % Supply all replicate run folders with identical physics/composition and distinct seeds.
 runFolders = {
-    % 'E:\...\replicate_1'
-    % 'E:\...\replicate_2'
-    % 'E:\...\replicate_3'
-    % 'E:\...\replicate_4'
-    % 'E:\...\replicate_5'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_125518_906\run_001_rep_01_xA_0.05_seed_11231_20261026_125518_950'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_125518_906\run_002_rep_02_xA_0.05_seed_2015_20261026_125542_837'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_125518_906\run_003_rep_03_xA_0.05_seed_3215464_20261026_125612_807'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_125518_906\run_004_rep_04_xA_0.05_seed_5_20261026_125640_519'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_125518_906\run_005_rep_05_xA_0.05_seed_10_20261026_125711_143'
 };
 % Alternatively select a batch and xA; leave runFolders empty to use these:
 batchFolder = ''; % contains batch_summary.mat from run_pkg_cleaned_sweeps

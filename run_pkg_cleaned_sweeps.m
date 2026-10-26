@@ -3,7 +3,7 @@ addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
 baseCfg = defaultNetworkAConfig();
 
 % Shared physics (fixed across all runs except xA and optional NtotalScale).
-baseCfg.L = 100;
+baseCfg.L = 50;
 baseCfg.Ntotal = [];             % computed feed; preserves nominal fill-mode rEq
 baseCfg.NtotalScale = 1.35;
 baseCfg.areaFraction = 1;
@@ -46,9 +46,9 @@ baseCfg.dumpSaveFinal = true;
 % 'composition'            : every sweep.xA at sweep.seeds(1)
 % 'replicated_composition' : every sweep.xA at every listed seed (15 runs below)
 sweep = struct();
-sweep.mode = 'replicated_composition';
+sweep.mode = 'replicates';
 sweep.xA = [.01 .025 .05 .075 .10]; % mole fractions A/(A+B), not A/B
-sweep.seeds = [11231 2015 3215464];          % one distinct seed per replicate block
+sweep.seeds = [11231 2015 3215464 5 10];          % one distinct seed per replicate block
 sweep.NtotalScaleByXA = [];      % [] = same baseCfg.NtotalScale for all compositions
 % Optional fA=4 calibration, in the same order as sweep.xA:
 % xA (%)       1       2.5     5          7.5        10
