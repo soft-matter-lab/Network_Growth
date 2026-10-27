@@ -19,10 +19,13 @@ averageOptions.usagePercent = [5 25 50 75 100];
 averageOptions.nBinWidth = 1;       % integer Kuhn bin width; larger = coarser histogram
 averageOptions.distanceBins = 30;
 averageOptions.kuhnYLim = [0 .35];   % fixed number-fraction y range; [] = automatic
+averageOptions.weightYLim = [];    % weight figure's own shared range; independent of number figure
 averageOptions.showSpread = true;  % shaded +/- one replicate SD, not confidence intervals
 averageOptions.requireAllReplicates = true; % avoid changing replicate cohorts at later usage
 averageOptions.visible = 'on';
 averageOptions.fitFlory = true;    % overlay a fit on each Kuhn number-fraction panel
+averageOptions.fitFloryWeight = true; % independent fit to each weight-fraction panel
+averageOptions.showWeightFromNumberFit = true; % also predict weight using number-fit p (no refit)
 averageOptions.floryModel = 'shifted'; % 'shifted' or 'original'
 averageOptions.floryMinCount = 4;  % shifted: n_min in (1-p)*p^(n-n_min), n>=n_min
 % original: (1-p)*p^(n-1), n>=1; floryMinCount only sets the fitting cutoff.
@@ -51,5 +54,11 @@ if averageOptions.fitFlory
     fprintf('Flory model: %s; normalized on n >= %g; fit uses n >= %g.\n', ...
         averageData.floryFit{1}.modelStyle,averageData.floryFit{1}.supportMin,averageData.floryFit{1}.minCount);
     disp(averageData.floryFitTable(:,{'targetPercent','model','p','pCI95Low','pCI95High','fullCdfDistance'}));
+end
+if averageOptions.fitFloryWeight
+    writetable(averageData.floryWeightFitTable,fullfile(averageOutputDir,'flory_weight_fits.csv'));
+    fprintf('Weight fits: W(n)=n*P(n)/mean(n); pDifference = p_weight - p_number.\n');
+    disp(averageData.floryWeightFitTable(:,{'targetPercent','model','p','pCI95Low','pCI95High', ...
+        'pFromNumber','pDifference','pDifferenceCI95Low','pDifferenceCI95High'}));
 end
 fprintf('Averaged distributions saved to: %s\n',averageOutputDir);

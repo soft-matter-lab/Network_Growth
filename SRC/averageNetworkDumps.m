@@ -6,14 +6,19 @@ function [fig, result] = averageNetworkDumps(runDirs, options)
 if nargin < 2, options = struct(); end
 options = mergeConfig(struct('usagePercent',[25 50 100],'nBinWidth',1, ...
     'distanceBins',30,'showSpread',true,'requireAllReplicates',true, ...
-    'visible','on','outputFile','','kuhnYLim',[],'fitFlory',true,'floryModel','shifted', ...
+    'visible','on','outputFile','','kuhnYLim',[],'weightYLim',[], ...
+    'fitFlory',true,'fitFloryWeight',[],'showWeightFromNumberFit',true,'floryModel','shifted', ...
     'floryMinCount',0,'floryOriginalAnchorWeight',1, ...
     'floryBootstrapSamples',2000,'floryBootstrapSeed',1729),options);
+if isempty(options.fitFloryWeight), options.fitFloryWeight=options.fitFlory; end
 validateattributes(options.usagePercent,{'numeric'},{'vector','nonempty','finite','>=',0,'<=',100});
 validateattributes(options.nBinWidth,{'numeric'},{'scalar','integer','positive','finite'});
 validateattributes(options.distanceBins,{'numeric'},{'scalar','integer','positive','finite'});
 if ~isempty(options.kuhnYLim)
     validateattributes(options.kuhnYLim,{'numeric'},{'vector','numel',2,'real','finite','nonnegative','increasing'});
+end
+if ~isempty(options.weightYLim)
+    validateattributes(options.weightYLim,{'numeric'},{'vector','numel',2,'real','finite','nonnegative','increasing'});
 end
 runDirs = cellstr(runDirs);
 R = numel(runDirs); targets = unique(options.usagePercent(:)'); T = numel(targets);
@@ -137,16 +142,59 @@ if options.fitFlory
         result.floryFitTable=[result.floryFitTable;row]; %#ok<AGROW>
     end
 end
+result.floryWeightFit=cell(1,T); result.floryWeightFitTable=table();
+if options.fitFloryWeight
+    weightOptions=struct('model',options.floryModel,'minCount',options.floryMinCount, ...
+        'bootstrapSamples',options.floryBootstrapSamples,'bootstrapSeed',options.floryBootstrapSeed);
+    for t=1:T
+        weightOptions.numberFit=result.floryFit{t};
+        f=fitFloryWeightDistribution(samples(:,t,1),nEdges,weightOptions);
+        if f.replicateCount<result.distributionReplicateCount(2,t)
+            if options.requireAllReplicates
+                error('NetworkGrowth:EmptyFloryWeightTail', ...
+                    'At %g%%, some replicates have no Kuhn weight at n >= %g.',targets(t),f.minCount);
+            else
+                warning('NetworkGrowth:EmptyFloryWeightTail', ...
+                    'At %g%%, weight fitting uses %d of %d weight-distribution replicates.', ...
+                    targets(t),f.replicateCount,result.distributionReplicateCount(2,t));
+            end
+        end
+        result.floryWeightFit{t}=f;
+        row=table(targets(t),string(f.modelStyle),f.numberSupportMin,f.supportMin,f.minCount, ...
+            f.p,f.pCI95(1),f.pCI95(2),f.pFromNumber,f.pDifference, ...
+            f.pDifferenceCI95(1),f.pDifferenceCI95(2),f.cdfDistance,f.binRMSE, ...
+            f.tailSSE,f.numberPredictionTailSSE,f.outsideBinProbability, ...
+            f.probabilityBelowCutoff,f.replicateCount,f.chainCount,f.totalKuhnCount, ...
+            'VariableNames',{'targetPercent','model','modelMinCount','weightSupportMin','fitMinCount', ...
+            'p','pCI95Low','pCI95High','pFromNumber','pDifference','pDifferenceCI95Low', ...
+            'pDifferenceCI95High','fullCdfDistance','fullBinRMSE','tailSSE', ...
+            'numberPredictionTailSSE','outsideBinProbability','probabilityBelowCutoff', ...
+            'fitReplicateCount','fitChainCount','totalKuhnCount'});
+        result.floryWeightFitTable=[result.floryWeightFitTable;row]; %#ok<AGROW>
+    end
+end
 fig = gobjects(1,3); colors = [0 .38 .68; .78 .29 .12; .15 .50 .43];
 labels = {'n (Kuhn segments)','n (Kuhn segments)','end-to-end distance r'};
 names = {'Kuhn-count number fraction','Kuhn-count weight fraction','End-to-end distance'};
 ylabels = {'Chain number fraction','Kuhn-segment weight fraction','Chain number fraction'};
-curveX=cell(1,T); curveY=cell(1,T);
+curveX=cell(2,T); curveY=cell(2,T);
+predictionX=cell(1,T); predictionY=cell(1,T);
 if options.fitFlory
     for t=1:T
-        [curveX{t},curveY{t}]=floryDisplayCurve(result.floryFit{t},result.edges{1});
+        [curveX{1,t},curveY{1,t}]=floryDisplayCurve(result.floryFit{t},result.edges{1});
     end
 end
+if options.fitFloryWeight
+    for t=1:T
+        f=result.floryWeightFit{t};
+        [curveX{2,t},curveY{2,t}]=floryWeightDisplayCurve(f,result.edges{2});
+        if options.showWeightFromNumberFit && isfinite(f.pFromNumber)
+            [predictionX{t},predictionY{t}]=floryWeightDisplayCurve(f,result.edges{2},f.pFromNumber);
+        end
+    end
+end
+fitEnabled=[options.fitFlory options.fitFloryWeight false];
+fits={result.floryFit,result.floryWeightFit};
 for col = 1:3
     fig(col) = figure('Color','w','Visible',options.visible,'Name',names{col}, ...
         'Position',[60+20*(col-1) 80 min(1800,180+420*T) 540]);
@@ -160,12 +208,16 @@ for col = 1:3
         upper = min(1,upper+spread);
     end
     upper = upper(:);
-    if col==1 && options.fitFlory
-        for t=1:T, upper=[upper;curveY{t}(:)]; end %#ok<AGROW>
+    if fitEnabled(col)
+        for t=1:T, upper=[upper;curveY{col,t}(:)]; end %#ok<AGROW>
+    end
+    if col==2
+        for t=1:T, upper=[upper;predictionY{t}(:)]; end %#ok<AGROW>
     end
     peak = max([0;upper(isfinite(upper))]);
     sharedYLim = [0 max(.05,1.1*peak)];
     if col==1 && ~isempty(options.kuhnYLim), sharedYLim=options.kuhnYLim(:)'; end
+    if col==2 && ~isempty(options.weightYLim), sharedYLim=options.weightYLim(:)'; end
     legendHandles=gobjects(0); legendAxes=[];
     for t = 1:T
         ax = nexttile(layout); hold(ax,'on');
@@ -173,31 +225,50 @@ for col = 1:3
             'TickDir','out','XGrid','off','YGrid','on','GridAlpha',.1,'Layer','top');
         m = repelem(result.mean{col}(t,:),2); sd = repelem(result.sd{col}(t,:),2);
         nr = result.distributionReplicateCount(col,t);
-        hSpread=gobjects(0); hFit=gobjects(0);
+        hSpread=gobjects(0); hFit=gobjects(0); hPrediction=gobjects(0);
         if options.showSpread && nr>=2
             hSpread=fill(ax,[x fliplr(x)],[max(0,m-sd) fliplr(min(1,m+sd))],colors(col,:), ...
                 'FaceAlpha',.1,'EdgeColor','none','DisplayName','+/- 1 SD');
         end
         hMean=plot(ax,x,m,'Color',colors(col,:),'LineWidth',2,'DisplayName','Replicate mean');
         title(ax,sprintf('%g%% usage',targets(t)),'FontSize',14,'FontWeight','bold');
-        if col==1 && options.fitFlory && isfinite(result.floryFit{t}.p)
-            f=result.floryFit{t};
+        if fitEnabled(col) && isfinite(fits{col}{t}.p)
+            f=fits{col}{t};
             if strcmp(f.modelStyle,'shifted')
-                fitLabel=sprintf('Shifted Flory (n_{min} = %g)',f.supportMin);
+                minimum=f.supportMin;
+                if col==2, minimum=f.numberSupportMin; end
+                fitLabel=sprintf('Shifted Flory (n_{min} = %g)',minimum);
             else
                 fitLabel=sprintf('Original Flory (fit n >= %g)',f.minCount);
             end
-            hFit=plot(ax,curveX{t},curveY{t},'k--','LineWidth',2, ...
+            if col==2, fitLabel=[fitLabel ' weight fit']; end
+            if col==2 && ~isempty(predictionX{t})
+                hPrediction=plot(ax,predictionX{t},predictionY{t},'-.', ...
+                    'Color',[.55 .55 .55],'LineWidth',1.6, ...
+                    'DisplayName','Prediction using number-fit p','Tag','weightFromNumberCurve');
+                if f.pFromNumber==0, set(hPrediction,'Marker','o','MarkerSize',4); end
+            end
+            hFit=plot(ax,curveX{col,t},curveY{col,t},'k--','LineWidth',2, ...
                 'DisplayName',fitLabel,'Tag','floryFitCurve');
             if f.p==0, set(hFit,'Marker','o','MarkerSize',4); end
-            subtitle(ax,sprintf('p = %.4f  |  %d replicates',f.p,f.replicateCount),'FontSize',11);
-        elseif col==1 && options.fitFlory && nr>0
+            if col==2 && ~isempty(predictionX{t})
+                cohortLabel=sprintf('%d replicates',f.replicateCount);
+                if f.replicateCount~=result.floryFit{t}.replicateCount
+                    cohortLabel=sprintf('%d weight / %d number replicates',f.replicateCount,result.floryFit{t}.replicateCount);
+                end
+                subtitle(ax,{sprintf('p_W = %.4f | p_N = %.4f',f.p,f.pFromNumber),cohortLabel},'FontSize',11);
+            elseif col==2
+                subtitle(ax,sprintf('p_W = %.4f | %d replicates',f.p,f.replicateCount),'FontSize',11);
+            else
+                subtitle(ax,sprintf('p = %.4f  |  %d replicates',f.p,f.replicateCount),'FontSize',11);
+            end
+        elseif fitEnabled(col) && nr>0
             subtitle(ax,'No chains at or above fitting cutoff');
         else
             subtitle(ax,sprintf('%d replicates',nr),'FontSize',11);
         end
         xlim(ax,[edges(1) edges(end)]); ylim(ax,sharedYLim);
-        handles=[hMean hSpread hFit];
+        handles=[hMean hSpread hFit hPrediction];
         if numel(handles)>numel(legendHandles), legendHandles=handles; legendAxes=ax; end
         if nr==0
             text(ax,.5,.5,'No contributing replicates','Units','normalized','HorizontalAlignment','center');

@@ -315,8 +315,9 @@ averageOptions.floryOriginalAnchorWeight = 1; % original only; 10 restores soft 
 
 Both choices give smooth dashed curves and properly normalized discrete
 probabilities. The driver produces the usual three horizontal-panel figures;
-the selected model appears on the number-fraction figure. Weight and distance
-panels are not independently fitted. Set `fitFlory=false` to hide fitting.
+the selected model appears on the number-fraction figure. `fitFlory` controls
+number fitting; `fitFloryWeight` controls weight fitting (see below). Distance
+panels are not fitted. Set both switches false to hide fitting.
 
 - **shifted** (driver default): `P(n)=(1-p)*p^(n-n_min)` for integer
   `n>=n_min`, with `n_min=floryMinCount`. Probability is zero below
@@ -388,6 +389,69 @@ options = struct('minCount',4,'anchorCount',4,'anchorWeight',10);
 ```
 It overlays the original fit and, when present, the saved shifted fit.
 It is no longer run automatically by the averaging driver.
+
+### Flory weight fractions and consistency of p
+
+Weight fraction weights the number distribution by **actual Kuhn count n**:
+`W(n)=n*P(n)/E[n]`. For a shifted geometric number model with minimum c,
+`E[n]=c+p/(1-p)`, hence
+
+```text
+W(n) = n*(1-p)^2*p^(n-c) / (c*(1-p)+p),   n=c,c+1,...
+c=4: W(n) = n*(1-p)^2*p^(n-4) / (4-3*p)
+c=1: W(n) = n*(1-p)^2*p^(n-1)             (original Flory)
+```
+
+These are normalized over the full integer support. The prefactor is n, not
+n-c: all segments, including the compulsory minimum, contribute to Kuhn weight.
+The original result is Flory's Equation (2), p. 1878 of the paper linked above.
+The shifted expression follows by size-weighting the shifted number model;
+simply shifting the original weight formula without its new denominator is wrong.
+
+The driver enables:
+
+```matlab
+averageOptions.fitFloryWeight = true;         % separately fit weight fractions
+averageOptions.showWeightFromNumberFit = true; % predict weight with number-fit p
+averageOptions.weightYLim = [];              % own shared y range; [] = automatic
+```
+
+Both distributions use the existing `floryModel` and `floryMinCount` choices.
+The weight plot has a black dashed weight fit and a gray dash-dot prediction
+using the number-fit p, with p_W and p_N labeled per snapshot. The prediction
+has no additional fitted parameter. It is available only when number fitting
+is enabled. Weight fitting can be used alone. In programmatic calls, an omitted
+`fitFloryWeight` follows `fitFlory`; the driver sets both explicitly.
+
+For an exact common geometric population the number and weight laws share p.
+Separately fitted p values need not coincide in finite data: number likelihood
+and weight least squares use different objectives, and weight fractions emphasize
+long chains. Each replicate is weight-normalized separately before averaging;
+reweighting the averaged number histogram is generally a different operation.
+The estimates use the same observations and are not statistically independent.
+
+The weight fit minimizes the squared difference from the equal-replicate mean
+weight PMF, on individual integer counts at/above the fitting cutoff, including
+the infinite zero-observation tail analytically. Fractions retain the FULL
+per-replicate Kuhn total as denominator, even in original mode when fitting only
+n>=4. No peak anchor or extra amplitude is fitted. Cropping and display binning
+cannot change p. A shifted minimum exceeding observed counts raises an error.
+Zero-Kuhn-mass populations are excluded only when `requireAllReplicates=false`,
+as for the empirical weight plots. Missing original-model tails are also checked.
+
+`flory_weight_fits.csv` and the MAT fields `floryWeightFitTable` / `floryWeightFit`
+save the weight estimate and its 95% whole-replicate bootstrap interval, number
+estimate, p_W-p_N, and a paired bootstrap interval for that difference. Pairing
+is used only with the same fitting cohort, bootstrap seed and number of draws.
+Otherwise the difference interval is NaN. With five replicates these intervals
+are approximate, not proof of model validity or a calibrated hypothesis test.
+The table also records full CDF/RMSE discrepancies, the weight-fit tail SSE,
+the number-prediction tail SSE, fit counts, support and normalization details.
+
+At p=0 with c>=1 the weight model is a point mass at c. If a zero minimum is
+chosen, zero-length chains carry no weight; for p>0 its weight law equals the
+c=1 law. At c=0,p=0 the number population has zero Kuhn mass, so the fitter
+explicitly labels and uses the p->0 weight-distribution limit at n=1.
 
 ## Verification
 
