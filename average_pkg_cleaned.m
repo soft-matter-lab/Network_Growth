@@ -15,7 +15,7 @@ batchFolder = ''; % contains batch_summary.mat from run_pkg_cleaned_sweeps
 selectedXA = .05;
 
 averageOptions = struct();
-averageOptions.usagePercent = [5 25 50 75 100];
+averageOptions.usagePercent = [5 50 100];
 averageOptions.nBinWidth = 1;       % integer Kuhn bin width; larger = coarser histogram
 averageOptions.distanceBins = 30;
 averageOptions.kuhnYLim = [0 .35];   % fixed number-fraction y range; [] = automatic
@@ -23,9 +23,9 @@ averageOptions.weightYLim = [];    % weight figure's own shared range; independe
 averageOptions.showSpread = true;  % shaded +/- one replicate SD, not confidence intervals
 averageOptions.requireAllReplicates = true; % avoid changing replicate cohorts at later usage
 averageOptions.visible = 'on';
-averageOptions.fitFlory = true;    % overlay a fit on each Kuhn number-fraction panel
-averageOptions.fitFloryWeight = true; % independent fit to each weight-fraction panel
-averageOptions.showWeightFromNumberFit = true; % also predict weight using number-fit p (no refit)
+averageOptions.fitFlory = true;    % fit number fractions; required for number-predicted weight curves
+averageOptions.fitFloryWeight = false; % true adds an independent weight fit; false skips that fit
+averageOptions.showWeightFromNumberFit = true; % show weight theory using number-fit p, even when fitFloryWeight=false
 averageOptions.floryModel = 'shifted'; % 'shifted' or 'original'
 averageOptions.floryMinCount = 4;  % shifted: n_min in (1-p)*p^(n-n_min), n>=n_min
 % original: (1-p)*p^(n-1), n>=1; floryMinCount only sets the fitting cutoff.

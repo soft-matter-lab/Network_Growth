@@ -411,16 +411,21 @@ simply shifting the original weight formula without its new denominator is wrong
 The driver enables:
 
 ```matlab
-averageOptions.fitFloryWeight = true;         % separately fit weight fractions
+averageOptions.fitFlory = true;              % fit number fractions and supply p
+averageOptions.fitFloryWeight = false;        % skip independent weight fitting
 averageOptions.showWeightFromNumberFit = true; % predict weight with number-fit p
 averageOptions.weightYLim = [];              % own shared y range; [] = automatic
 ```
 
 Both distributions use the existing `floryModel` and `floryMinCount` choices.
-The weight plot has a black dashed weight fit and a gray dash-dot prediction
-using the number-fit p, with p_W and p_N labeled per snapshot. The prediction
-has no additional fitted parameter. It is available only when number fitting
-is enabled. Weight fitting can be used alone. In programmatic calls, an omitted
+With these settings the weight plot shows a black dashed prediction using the
+number-fit p, labeled p_N per snapshot. No weight fitting is performed. The
+prediction has no additional fitted parameter and works independently of
+`fitFloryWeight`; it requires number fitting (`fitFlory=true`). Set
+`showWeightFromNumberFit=false` to hide it. If `fitFloryWeight=true`, the plot
+adds a black dashed independent weight fit and shows the number-based prediction
+in gray dash-dot, with p_W and p_N labeled per snapshot. Weight fitting can be
+used alone. In programmatic calls, an omitted
 `fitFloryWeight` follows `fitFlory`; the driver sets both explicitly.
 
 For an exact common geometric population the number and weight laws share p.

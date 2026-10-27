@@ -188,9 +188,14 @@ if options.fitFloryWeight
     for t=1:T
         f=result.floryWeightFit{t};
         [curveX{2,t},curveY{2,t}]=floryWeightDisplayCurve(f,result.edges{2});
-        if options.showWeightFromNumberFit && isfinite(f.pFromNumber)
-            [predictionX{t},predictionY{t}]=floryWeightDisplayCurve(f,result.edges{2},f.pFromNumber);
-        end
+    end
+end
+% Predict directly from the number fit, independently of weight fitting.
+if options.showWeightFromNumberFit && options.fitFlory
+    for t=1:T
+        number=result.floryFit{t};
+        weightModel=struct('p',number.p,'supportMin',max(1,number.supportMin));
+        [predictionX{t},predictionY{t}]=floryWeightDisplayCurve(weightModel,result.edges{2});
     end
 end
 fitEnabled=[options.fitFlory options.fitFloryWeight false];
@@ -232,7 +237,17 @@ for col = 1:3
         end
         hMean=plot(ax,x,m,'Color',colors(col,:),'LineWidth',2,'DisplayName','Replicate mean');
         title(ax,sprintf('%g%% usage',targets(t)),'FontSize',14,'FontWeight','bold');
-        if fitEnabled(col) && isfinite(fits{col}{t}.p)
+        hasFit=fitEnabled(col) && isfinite(fits{col}{t}.p);
+        hasPrediction=col==2 && ~isempty(predictionX{t});
+        if hasPrediction
+            predictionStyle='--'; predictionColor=[0 0 0];
+            if hasFit, predictionStyle='-.'; predictionColor=[.55 .55 .55]; end
+            hPrediction=plot(ax,predictionX{t},predictionY{t},'LineStyle',predictionStyle, ...
+                'Color',predictionColor,'LineWidth',2, ...
+                'DisplayName','Prediction using number-fit p','Tag','weightFromNumberCurve');
+            if result.floryFit{t}.p==0, set(hPrediction,'Marker','o','MarkerSize',4); end
+        end
+        if hasFit
             f=fits{col}{t};
             if strcmp(f.modelStyle,'shifted')
                 minimum=f.supportMin;
@@ -242,16 +257,10 @@ for col = 1:3
                 fitLabel=sprintf('Original Flory (fit n >= %g)',f.minCount);
             end
             if col==2, fitLabel=[fitLabel ' weight fit']; end
-            if col==2 && ~isempty(predictionX{t})
-                hPrediction=plot(ax,predictionX{t},predictionY{t},'-.', ...
-                    'Color',[.55 .55 .55],'LineWidth',1.6, ...
-                    'DisplayName','Prediction using number-fit p','Tag','weightFromNumberCurve');
-                if f.pFromNumber==0, set(hPrediction,'Marker','o','MarkerSize',4); end
-            end
             hFit=plot(ax,curveX{col,t},curveY{col,t},'k--','LineWidth',2, ...
                 'DisplayName',fitLabel,'Tag','floryFitCurve');
             if f.p==0, set(hFit,'Marker','o','MarkerSize',4); end
-            if col==2 && ~isempty(predictionX{t})
+            if hasPrediction
                 cohortLabel=sprintf('%d replicates',f.replicateCount);
                 if f.replicateCount~=result.floryFit{t}.replicateCount
                     cohortLabel=sprintf('%d weight / %d number replicates',f.replicateCount,result.floryFit{t}.replicateCount);
@@ -262,6 +271,13 @@ for col = 1:3
             else
                 subtitle(ax,sprintf('p = %.4f  |  %d replicates',f.p,f.replicateCount),'FontSize',11);
             end
+        elseif hasPrediction
+            number=result.floryFit{t};
+            cohortLabel=sprintf('%d replicates',nr);
+            if nr~=number.replicateCount
+                cohortLabel=sprintf('%d weight / %d number replicates',nr,number.replicateCount);
+            end
+            subtitle(ax,{sprintf('p_N = %.4f (from number fit)',number.p),cohortLabel},'FontSize',11);
         elseif fitEnabled(col) && nr>0
             subtitle(ax,'No chains at or above fitting cutoff');
         else
