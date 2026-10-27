@@ -3,7 +3,7 @@ addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
 baseCfg = defaultNetworkAConfig();
 
 % Shared physics (fixed across all runs except xA and optional NtotalScale).
-baseCfg.L = 50;
+baseCfg.L = 100;
 baseCfg.Ntotal = [];             % computed feed; preserves nominal fill-mode rEq
 baseCfg.NtotalScale = 1.35;
 baseCfg.areaFraction = 1;

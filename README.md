@@ -160,7 +160,8 @@ Both distributions sum to one over the full range when their denominators are
 positive; these are fractions per bin, not densities. Empty/zero-segment
 populations are marked as unavailable. Explicitly cropped ranges retain the
 full denominator, so visible fractions can sum to less than one.
-Raw dump samples and the separate overlay/replicate-average plots are unchanged.
+Raw dump samples and the separate single-run overlay plots are unchanged.
+Replicate-average figures are described below.
 Set `vizOptions.kuhnXLim`, `vizOptions.weightXLim`, and
 `vizOptions.kuhnYLim` / `vizOptions.weightYLim` to explicit two-element ranges to compare different
 runs; `[]` chooses common ranges automatically within the selected run.
@@ -256,9 +257,24 @@ The averager checks that all non-output settings match and seeds are distinct.
 `averageOptions.usagePercent = [25 50 100]` selects evolution points. Completed
 chain histograms use common bins across all runs and points. Each replicate is
 normalized to probability per bin **before** averaging, giving each run equal
-weight rather than giving runs with more chains more weight. The three panels
-show Kuhn count, physical contour length, and end-to-end distance. At fixed b,
-the first two describe the same distribution in different units.
+weight rather than giving runs with more chains more weight. Three separate
+figures show Kuhn-count number fraction, Kuhn-count weight fraction, and
+end-to-end distance; contour length is omitted. Each figure places the selected
+usage points left to right (three subplots for three selected points), without
+overlaying different usage points. All subplots within a figure share its x/y
+limits, including room for displayed SD bands. Limits are computed independently
+for each distribution, not forced to match across figures.
+`averageOptions.kuhnYLim = [0 .5]` fixes the number-fraction figure's y range
+across all snapshots. Use `[]` for automatic limits; other figures remain
+independently scaled. Curves outside a manual range are clipped only for display.
+
+For weight fraction, each replicate uses `sum(n in bin)/sum(n over completed
+chains)` before the equal-replicate mean and SD are calculated. Grouped bins sum
+actual Kuhn counts, not bin centers. This weights chains by their Kuhn count
+within a run, while retaining equal weight for each run. A zero total Kuhn count
+is undefined and causes an error by default; with `requireAllReplicates=false`,
+that run is excluded from the weight distribution and its contributing count
+is reported separately.
 
 Shading (`showSpread`) is plus/minus one sample standard deviation across
 replicates, clipped to [0,1] for display; it is not a confidence interval. Raw SDs
@@ -276,10 +292,102 @@ selection bias when some runs stop early. A single contributing run has undefine
 SD. Actual conversion (which can overshoot a target in a small system), seed,
 sample count and snapshot filename are recorded for every replicate/target.
 
-Outputs are written to a unique folder under `replicate_averages`: a PNG, a MAT
+Outputs are written to a unique folder under `replicate_averages`: three PNGs, a MAT
 file containing means, SDs, bin edges and per-replicate histograms, and a CSV
 selection table. Edit `outputRoot` in the driver to choose another destination.
 Programmatic use: `[fig,data] = averageNetworkDumps(runFolders,averageOptions)`.
+`fig` contains three figure handles in the order given by `data.distributionNames`:
+`kuhn_number`, `kuhn_weight`, `end_to_end`. The cells in `edges`, `mean`, `sd`, and
+`perReplicate` use that order (the second entry is now weight fraction, not contour
+length). `distributionReplicateCount` records contributing runs per distribution
+and target. `outputFile` is a base filename; the three exports append those
+distribution names, and their paths are returned in `data.outputFiles`.
+
+### Flory number-fraction fits
+
+The main number-fraction plot has one model switch in `average_pkg_cleaned.m`:
+
+```matlab
+averageOptions.floryModel = 'shifted'; % 'shifted' or 'original'
+averageOptions.floryMinCount = 4;
+averageOptions.floryOriginalAnchorWeight = 1; % original only; 10 restores soft anchor
+```
+
+Both choices give smooth dashed curves and properly normalized discrete
+probabilities. The driver produces the usual three horizontal-panel figures;
+the selected model appears on the number-fraction figure. Weight and distance
+panels are not independently fitted. Set `fitFlory=false` to hide fitting.
+
+- **shifted** (driver default): `P(n)=(1-p)*p^(n-n_min)` for integer
+  `n>=n_min`, with `n_min=floryMinCount`. Probability is zero below
+  that minimum. This is a minimum-length-constrained geometric (Flory-type)
+  distribution, not a backward extension of a conditional fit. A minimum
+  exceeding an observed count raises an error rather than discarding chains
+  or silently rescaling the curve. Choose the minimum appropriate to the run.
+- **original**: `P(n)=(1-p)*p^(n-1)` for integer `n>=1`, zero at n=0.
+  Here `floryMinCount` sets only the fitting cutoff (at least 1); it does
+  not shift the model. The full curve begins at n=1, even when fitting n>=4.
+  See Flory (1936), [Equation (4), p. 1879](https://pubs.acs.org/doi/10.1021/ja01301a016).
+
+For the shifted model, equal-replicate raw-count log likelihood gives
+`p=(mu-n_min)/(1+mu-n_min)`, where mu is the mean of the replicate mean
+Kuhn counts. It has no free amplitude or forced peak anchor. With minimum 4
+the estimates are unchanged from the earlier conditional-tail fit when every
+chain has n>=4. The invalid upward extrapolation below four has been removed.
+For p=0 the model is a point mass at n_min.
+
+The original model minimizes squared error against the equal-replicate mean
+**absolute** number fractions over n>=the fitting cutoff. Each replicate is
+normalized over its entire observed population, not just the fitted tail.
+`floryOriginalAnchorWeight=1` gives ordinary least squares. Higher values
+increase the squared-error weight of the bin at the fitting cutoff; this is
+a soft anchor. An exact n=4 anchor above `27/256 = 0.10546875` is impossible
+for the original formula. The optimizer searches both parameter branches and
+compares boundaries. The unobserved infinite tail contributes analytically.
+Unit-count bins are used internally, so fitting is independent of display
+bin width or cropping. Original-fit details, including anchor feasibility
+and unweighted/weighted errors, are in each fit's `originalDiagnostics`.
+
+Neither mode extrapolates outside its support or normalizes over the displayed
+range. Saved bin probabilities sum the discrete model within each bin, retaining
+the probability outside the plot separately. With unit bins the curve directly
+evaluates the model; with grouped bins a continuous envelope passes through
+the grouped probabilities. A grouped boundary bin can straddle the minimum;
+its center represents the entire bin, not a forbidden single chain length.
+
+`floryBootstrapSamples=2000` and `floryBootstrapSeed=1729` give reproducible
+95% percentile intervals by resampling whole replicates without changing the
+global random stream. Intervals measure replicate uncertainty, not model
+adequacy. Fewer than two fitting replicates, or zero bootstrap draws, gives
+no interval. Original-mode replicates without any count at/above the cutoff
+cause an error by default; `requireAllReplicates=false` excludes them from
+fitting and reports the smaller cohort.
+
+The figure legend identifies the model; the console, `flory_fits.csv`, and
+MAT file report p and its interval. The CSV also records `model`,
+`modelMinCount` (support), `fitMinCount` (fitting cutoff), and
+`originalAnchorWeight` (NaN when inapplicable). `fullCdfDistance` and
+`fullBinRMSE` now compare the **selected normalized model** with the full
+empirical distribution. `tailCdfDistance` compares conditional tail shapes;
+it is not the original mode's absolute-fraction least-squares objective.
+These are discrepancy measures, not hypothesis-test p-values. Model
+probabilities, normalization, and diagnostics now consistently describe the
+chosen mode rather than a separate zero-based reference distribution.
+
+Fitted p is an effective continuation/shape parameter, not automatically
+crosslinker usage or chemical conversion. The simulation's length-dependent
+joining rates and changing concentrations need not satisfy Flory's assumptions.
+[NIST's geometric model](https://www.itl.nist.gov/div898/software/dataplot/refman2/ch8/geopdf.pdf)
+uses stopping probability 1-p in this notation.
+
+The earlier separate comparison utility remains available for saved averages:
+```matlab
+loaded = load('path/to/replicate_average.mat');
+options = struct('minCount',4,'anchorCount',4,'anchorWeight',10);
+[fig,comparison] = compareOriginalFloryFits(loaded.averageData,options);
+```
+It overlays the original fit and, when present, the saved shifted fit.
+It is no longer run automatically by the averaging driver.
 
 ## Verification
 

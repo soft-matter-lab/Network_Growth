@@ -1,13 +1,20 @@
 function [fig, result] = averageNetworkDumps(runDirs, options)
 % Equal-replicate mean probability histograms of completed chains at milestones.
 % Normalize each replicate separately before averaging; never pool chain counts.
+% Returns three figures (number fraction, weight fraction, end-to-end distance),
+% each with one column per usage target. outputFile is a base name; exports add suffixes.
 if nargin < 2, options = struct(); end
 options = mergeConfig(struct('usagePercent',[25 50 100],'nBinWidth',1, ...
     'distanceBins',30,'showSpread',true,'requireAllReplicates',true, ...
-    'visible','on','outputFile',''),options);
+    'visible','on','outputFile','','kuhnYLim',[],'fitFlory',true,'floryModel','shifted', ...
+    'floryMinCount',0,'floryOriginalAnchorWeight',1, ...
+    'floryBootstrapSamples',2000,'floryBootstrapSeed',1729),options);
 validateattributes(options.usagePercent,{'numeric'},{'vector','nonempty','finite','>=',0,'<=',100});
 validateattributes(options.nBinWidth,{'numeric'},{'scalar','integer','positive','finite'});
 validateattributes(options.distanceBins,{'numeric'},{'scalar','integer','positive','finite'});
+if ~isempty(options.kuhnYLim)
+    validateattributes(options.kuhnYLim,{'numeric'},{'vector','numel',2,'real','finite','nonnegative','increasing'});
+end
 runDirs = cellstr(runDirs);
 R = numel(runDirs); targets = unique(options.usagePercent(:)'); T = numel(targets);
 if R<2, error('NetworkGrowth:ReplicateFolders','At least two replicate folders are required.'); end
@@ -20,7 +27,7 @@ for rep = 1:R
     seeds(rep) = cfg.randSeed;
     physics = physicsConfig(cfg);
     if rep == 1
-        reference = physics; b = cfg.b;
+        reference = physics;
     elseif ~isequaln(reference,physics)
         error('NetworkGrowth:ReplicateSettings','Run %d has different settings; select one composition and parameter set.',rep);
     end
@@ -62,19 +69,36 @@ if nEdges(end)<maxN, nEdges(end+1)=nEdges(end)+options.nBinWidth; end
 if maxD<=0, maxD=1; end
 rEdges = linspace(0,maxD*1.05,options.distanceBins+1);
 result = struct('targets',targets,'seeds',seeds,'selection',selection, ...
-    'edges',{{nEdges,nEdges*b,rEdges}},'mean',{{}},'sd',{{}},'perReplicate',{{}}, ...
+    'distributionNames',{{'kuhn_number','kuhn_weight','end_to_end'}}, ...
+    'edges',{{nEdges,nEdges,rEdges}},'mean',{{}},'sd',{{}},'perReplicate',{{}}, ...
     'replicateCount',zeros(1,T),'weighting','equal replicate; probability per bin', ...
+    'distributionReplicateCount',zeros(3,T),'outputFiles',{{}}, ...
     'spread','one sample standard deviation across replicate histograms');
 for col = 1:3
     edges = result.edges{col}; values = nan(R,numel(edges)-1,T);
     for t = 1:T
         for rep = 1:R
             if col<3, v=samples{rep,t,1}; else, v=samples{rep,t,2}; end
-            if col==2, v=v*b; end
-            if ~isempty(v), values(rep,:,t)=histcounts(v,edges)/numel(v); end
+            if ~isempty(v)
+                if col==2
+                    [fraction,totalSegments] = chainWeightFractions(v,edges);
+                    if totalSegments>0
+                        values(rep,:,t)=fraction;
+                    elseif options.requireAllReplicates
+                        error('NetworkGrowth:EmptyWeightPopulation', ...
+                            'Run %d at %g%% has no completed-chain Kuhn segments.',rep,targets(t));
+                    else
+                        warning('NetworkGrowth:EmptyWeightPopulation', ...
+                            'Excluding run %d at %g%% from the weight fraction: zero total Kuhn segments.',rep,targets(t));
+                    end
+                else
+                    values(rep,:,t)=histcounts(v,edges)/numel(v);
+                end
+            end
         end
         valid = ~isnan(values(:,1,t)); nr = sum(valid);
-        result.replicateCount(t) = nr;
+        if col==1, result.replicateCount(t) = nr; end
+        result.distributionReplicateCount(col,t) = nr;
         result.mean{col}(t,:) = mean(values(valid,:,t),1);
         if nr>=2
             result.sd{col}(t,:) = std(values(valid,:,t),0,1);
@@ -84,27 +108,118 @@ for col = 1:3
     end
     result.perReplicate{col} = values;
 end
-fig = figure('Color','w','Visible',options.visible,'Position',[100 100 1400 480]);
-layout = tiledlayout(fig,1,3,'TileSpacing','compact'); colors = lines(T);
-labels = {'n (Kuhn segments)','contour length n b','end-to-end distance r'};
-for col = 1:3
-    ax = nexttile(layout); hold(ax,'on'); edges = result.edges{col};
-    x = reshape([edges(1:end-1);edges(2:end)],1,[]);
-    for t = 1:T
-        m = repelem(result.mean{col}(t,:),2); sd = repelem(result.sd{col}(t,:),2);
-        if options.showSpread && result.replicateCount(t)>=2
-            fill(ax,[x fliplr(x)],[max(0,m-sd) fliplr(min(1,m+sd))],colors(t,:), ...
-                'FaceAlpha',.12,'EdgeColor','none','HandleVisibility','off');
+result.floryFit = cell(1,T); result.floryFitTable = table();
+if options.fitFlory
+    fitOptions=struct('model',options.floryModel,'minCount',options.floryMinCount, ...
+        'originalAnchorWeight',options.floryOriginalAnchorWeight, ...
+        'bootstrapSamples',options.floryBootstrapSamples,'bootstrapSeed',options.floryBootstrapSeed);
+    for t=1:T
+        f=fitFloryNumberDistribution(samples(:,t,1),nEdges,fitOptions);
+        if f.replicateCount<result.replicateCount(t)
+            if options.requireAllReplicates
+                error('NetworkGrowth:EmptyFloryTail', ...
+                    'At %g%%, some replicates have no chains with n >= %g. Lower floryMinCount or set requireAllReplicates=false.',targets(t),options.floryMinCount);
+            else
+                warning('NetworkGrowth:EmptyFloryTail', ...
+                    'At %g%%, fitting uses %d of %d nonempty replicates with n >= %g.', ...
+                    targets(t),f.replicateCount,result.replicateCount(t),options.floryMinCount);
+            end
         end
-        plot(ax,x,m,'Color',colors(t,:),'LineWidth',1.8, ...
-            'DisplayName',sprintf('%g%% (%d replicates)',targets(t),result.replicateCount(t)));
+        result.floryFit{t}=f;
+        row=table(targets(t),f.p,f.pCI95(1),f.pCI95(2),f.meanCount,f.cdfDistance, ...
+            f.fitCdfDistance,f.binRMSE,f.outsideBinProbability,f.probabilityBelowCutoff, ...
+            f.minCount,f.replicateCount,f.chainCount,f.totalChainCount,f.observedTailFraction, ...
+            string(f.modelStyle),f.supportMin,f.originalAnchorWeight, ...
+            'VariableNames',{'targetPercent','p','pCI95Low','pCI95High','meanFittedKuhnCount', ...
+            'fullCdfDistance','tailCdfDistance','fullBinRMSE','outsideBinProbability', ...
+            'probabilityBelowCutoff','fitMinCount','fitReplicateCount','fitChainCount','totalChainCount', ...
+            'observedTailFraction','model','modelMinCount','originalAnchorWeight'});
+        result.floryFitTable=[result.floryFitTable;row]; %#ok<AGROW>
     end
-    xlabel(ax,labels{col}); ylabel(ax,'mean probability per bin'); grid(ax,'on');
-    xlim(ax,[edges(1) edges(end)]);
-    if col==3, legend(ax,'show','Location','eastoutside'); end
 end
-title(layout,'Completed-chain distributions: equal-replicate means');
-if ~isempty(options.outputFile), exportgraphics(fig,options.outputFile,'Resolution',180); end
+fig = gobjects(1,3); colors = [0 .38 .68; .78 .29 .12; .15 .50 .43];
+labels = {'n (Kuhn segments)','n (Kuhn segments)','end-to-end distance r'};
+names = {'Kuhn-count number fraction','Kuhn-count weight fraction','End-to-end distance'};
+ylabels = {'Chain number fraction','Kuhn-segment weight fraction','Chain number fraction'};
+curveX=cell(1,T); curveY=cell(1,T);
+if options.fitFlory
+    for t=1:T
+        [curveX{t},curveY{t}]=floryDisplayCurve(result.floryFit{t},result.edges{1});
+    end
+end
+for col = 1:3
+    fig(col) = figure('Color','w','Visible',options.visible,'Name',names{col}, ...
+        'Position',[60+20*(col-1) 80 min(1800,180+420*T) 540]);
+    layout = tiledlayout(fig(col),1,T,'TileSpacing','compact','Padding','compact');
+    edges = result.edges{col};
+    x = reshape([edges(1:end-1);edges(2:end)],1,[]);
+    % Include the displayed SD bands when setting this figure's shared limits.
+    upper = result.mean{col};
+    if options.showSpread
+        spread = result.sd{col}; spread(~isfinite(spread)) = 0;
+        upper = min(1,upper+spread);
+    end
+    upper = upper(:);
+    if col==1 && options.fitFlory
+        for t=1:T, upper=[upper;curveY{t}(:)]; end %#ok<AGROW>
+    end
+    peak = max([0;upper(isfinite(upper))]);
+    sharedYLim = [0 max(.05,1.1*peak)];
+    if col==1 && ~isempty(options.kuhnYLim), sharedYLim=options.kuhnYLim(:)'; end
+    legendHandles=gobjects(0); legendAxes=[];
+    for t = 1:T
+        ax = nexttile(layout); hold(ax,'on');
+        set(ax,'FontName','Arial','FontSize',11,'LineWidth',.8,'Box','off', ...
+            'TickDir','out','XGrid','off','YGrid','on','GridAlpha',.1,'Layer','top');
+        m = repelem(result.mean{col}(t,:),2); sd = repelem(result.sd{col}(t,:),2);
+        nr = result.distributionReplicateCount(col,t);
+        hSpread=gobjects(0); hFit=gobjects(0);
+        if options.showSpread && nr>=2
+            hSpread=fill(ax,[x fliplr(x)],[max(0,m-sd) fliplr(min(1,m+sd))],colors(col,:), ...
+                'FaceAlpha',.1,'EdgeColor','none','DisplayName','+/- 1 SD');
+        end
+        hMean=plot(ax,x,m,'Color',colors(col,:),'LineWidth',2,'DisplayName','Replicate mean');
+        title(ax,sprintf('%g%% usage',targets(t)),'FontSize',14,'FontWeight','bold');
+        if col==1 && options.fitFlory && isfinite(result.floryFit{t}.p)
+            f=result.floryFit{t};
+            if strcmp(f.modelStyle,'shifted')
+                fitLabel=sprintf('Shifted Flory (n_{min} = %g)',f.supportMin);
+            else
+                fitLabel=sprintf('Original Flory (fit n >= %g)',f.minCount);
+            end
+            hFit=plot(ax,curveX{t},curveY{t},'k--','LineWidth',2, ...
+                'DisplayName',fitLabel,'Tag','floryFitCurve');
+            if f.p==0, set(hFit,'Marker','o','MarkerSize',4); end
+            subtitle(ax,sprintf('p = %.4f  |  %d replicates',f.p,f.replicateCount),'FontSize',11);
+        elseif col==1 && options.fitFlory && nr>0
+            subtitle(ax,'No chains at or above fitting cutoff');
+        else
+            subtitle(ax,sprintf('%d replicates',nr),'FontSize',11);
+        end
+        xlim(ax,[edges(1) edges(end)]); ylim(ax,sharedYLim);
+        handles=[hMean hSpread hFit];
+        if numel(handles)>numel(legendHandles), legendHandles=handles; legendAxes=ax; end
+        if nr==0
+            text(ax,.5,.5,'No contributing replicates','Units','normalized','HorizontalAlignment','center');
+        end
+    end
+    title(layout,names{col},'FontName','Arial','FontSize',17,'FontWeight','bold');
+    xlabel(layout,labels{col},'FontName','Arial','FontSize',12);
+    ylabel(layout,ylabels{col},'FontName','Arial','FontSize',12);
+    lgd=legend(legendAxes,legendHandles,'Orientation','horizontal','Box','off','FontSize',10);
+    lgd.Layout.Tile='south';
+end
+if ~isempty(options.outputFile)
+    [folder,base,ext] = fileparts(options.outputFile);
+    if isempty(ext), ext='.png'; end
+    for col = 1:3
+        result.outputFiles{col} = fullfile(folder,[base '_' result.distributionNames{col} ext]);
+        % Hover controls can otherwise be captured when figures are visible.
+        axesList=findall(fig(col),'Type','axes');
+        for ax=axesList', ax.Toolbar.Visible='off'; end
+        exportgraphics(fig(col),result.outputFiles{col},'Resolution',180);
+    end
+end
 end
 
 function physics = physicsConfig(cfg)

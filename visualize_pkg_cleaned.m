@@ -2,7 +2,7 @@
 % Accepts ONE simulation run folder or its dumps subfolder. No simulation runs.
 addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
 
-inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_pkg_cleaned\single_xA_0p0500_N_6714_20261026_142359_249'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
+inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_001_rep_01_xA_0.05_seed_11231_20261026_164548_463'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
 
 vizOptions = struct();
 vizOptions.outputRoot = ''; % '' = a new visualization folder under the selected run
