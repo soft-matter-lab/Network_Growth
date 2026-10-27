@@ -177,8 +177,18 @@ snapshot's total bond count (probability per 2D bin, not probability density).
 The origin is marked, both axes have equal spatial scale, and bins, symmetric
 coordinate ranges and color limits are held fixed across all saved states.
 `displacementBins` sets bins per axis; `displacementLimit = R` fixes both axes to
-`[-R,R]`; `displacementCLim` fixes the probability color range. Empty limits use
-run-wide automatic values. Cropping retains the full sample denominator.
+`[-R,R]`; `displacementCLim` fixes the probability color range, e.g. `[0 .02]`.
+Empty bins are white, with a sequential white/gold/orange/deep-red color map.
+When `displacementCLim=[]`, the upper color limit is the
+`displacementColorPercentile` percentile (default 98) of positive bin probabilities
+across all saved states. This shared cap improves contrast when a few concentrated
+early snapshots dominate the maximum. Lower the percentile (e.g. 95) for more
+contrast, or use 100 for the full run-wide maximum; an explicit `displacementCLim`
+overrides the percentile. Bins above the cap use the highest color, and a
+greater-than-or-equal top colorbar label identifies saturated panels. The raw
+probabilities are unchanged, with no smoothing or per-frame color rescaling.
+Empty coordinate limits use run-wide automatic values. Cropping retains the
+full sample denominator. The chosen color limits are saved in `report.histogramStyle`.
 
 New distribution payloads include `completed.endToEndVector` (columns dx, dy).
 Older snapshots can reconstruct these vectors from nodes, bonds and periodic

@@ -6,9 +6,11 @@ if nargin < 2, options = struct(); end
 options = mergeConfig(struct('kuhnXLim',[],'endToEndXLim',[], ...
     'histogramYLim',[],'kuhnYLim',[],'endToEndYLim',[],'endToEndBins',30, ...
     'displacementLimit',[],'displacementBins',40,'displacementCLim',[], ...
+    'displacementColorPercentile',98, ...
     'weightXLim',[],'weightYLim',[]),options);
 validateattributes(options.endToEndBins,{'numeric'},{'scalar','integer','positive','finite'});
 validateattributes(options.displacementBins,{'numeric'},{'scalar','integer','positive','finite'});
+validateattributes(options.displacementColorPercentile,{'numeric'},{'scalar','real','finite','>',0,'<=',100});
 if ~isempty(options.displacementLimit)
     validateattributes(options.displacementLimit,{'numeric'},{'scalar','real','positive','finite'});
 end
@@ -69,17 +71,27 @@ if limit<=0, limit = 1; end
 style.displacementLim = [-limit limit];
 style.displacementEdges = linspace(-limit,limit,options.displacementBins+1);
 style.displacementCLim = options.displacementCLim;
+style.displacementColorPercentile = options.displacementColorPercentile;
 if isempty(style.displacementCLim)
-    peakXY = 0;
+    % One shared robust cap: a sparse early state must not wash out later ones.
+    % Retain occupied-bin probabilities only, not the full snapshot payloads.
+    occupied = cell(count,1);
     for k = 1:count
         s = getSnapshot(source,files,dumpDir,k);
         dv = networkDumpDisplacements(s);
         if ~isempty(dv)
             pxy = histcounts2(dv(:,1),dv(:,2),style.displacementEdges,style.displacementEdges)/size(dv,1);
-            peakXY = max([peakXY;pxy(:)]);
+            occupied{k} = pxy(pxy>0);
         end
     end
-    style.displacementCLim = [0 max(.001,peakXY)];
+    values = sort(vertcat(occupied{:}));
+    cap = .001; % finite fallback for runs without any visible bonds
+    if ~isempty(values)
+        position = 1+(numel(values)-1)*options.displacementColorPercentile/100;
+        lo = floor(position); hi = ceil(position); alpha = position-lo;
+        cap = values(lo)*(1-alpha)+values(hi)*alpha;
+    end
+    style.displacementCLim = [0 cap];
 end
 if isempty(style.histogramYLim)
     peakN = 0; peakR = 0;

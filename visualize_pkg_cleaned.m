@@ -28,7 +28,10 @@ vizOptions.kuhnYLim = [];        % fixed probability-per-bin y range, e.g. [0 .5
 vizOptions.weightYLim = [];     % independent fixed weight-fraction y range, e.g. [0 .2]
 vizOptions.displacementBins = 40; % bins per axis in the 2D endpoint histogram
 vizOptions.displacementLimit = []; % [] = run-wide auto; R means x,y span [-R,R]
-vizOptions.displacementCLim = [];  % [] = run-wide probability color scale; e.g. [0 .05]
+vizOptions.displacementCLim = [];  % [] = shared robust auto scale; or force e.g. [0 .02]
+vizOptions.displacementColorPercentile = 98; % occupied-bin percentile across run; lower = more contrast, 100 = full max
+% Empty bins are white; gold-to-red colors show increasing probability.
+% The color cap stays fixed across snapshots. Higher bins saturate, without changing data.
 
 % Overlaid distributions: Kuhn counts, contour lengths n*b, end-to-end lengths.
 vizOptions.saveComparison = true;

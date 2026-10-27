@@ -74,16 +74,27 @@ if available
     if ~isempty(dv)
         probability = histcounts2(dv(:,1),dv(:,2),edges,edges)/size(dv,1);
     end
-    imagesc(ax,centers,centers,probability');
-    set(ax,'YDir','normal'); axis(ax,'equal');
+    % Empty bins reveal the white axes; CData retains the original probabilities.
+    imagesc(ax,centers,centers,probability','AlphaData',double(probability'>0), ...
+        'AlphaDataMapping','none');
+    set(ax,'YDir','normal','Color','w'); axis(ax,'equal');
     xlim(ax,style.displacementLim); ylim(ax,style.displacementLim);
-    clim(ax,style.displacementCLim); colormap(ax,parula);
+    % Sequential white / gold / orange / deep red, with no dark background.
+    colorStops = [1 1 1;1 .92 .69;.995 .65 .25;.90 .27 .10;.45 .02 .12];
+    warmMap = interp1([0 .08 .35 .65 1],colorStops,linspace(0,1,256));
+    clim(ax,style.displacementCLim); colormap(ax,warmMap);
     cb = colorbar(ax); cb.Label.String = 'probability per 2D bin';
+    cb.Ticks = linspace(style.displacementCLim(1),style.displacementCLim(2),5);
+    tickLabels = string(compose('%.3g',cb.Ticks));
+    if any(probability(:)>style.displacementCLim(2))
+        tickLabels(end) = sprintf('\\geq %.3g',style.displacementCLim(2));
+    end
+    cb.TickLabels = tickLabels;
     xline(ax,0,':','Color',[.7 .7 .7]); yline(ax,0,':','Color',[.7 .7 .7]);
     xlabel(ax,'\Delta x'); ylabel(ax,'\Delta y');
     title(ax,sprintf('End-to-end vectors (N = %d)',size(dv,1)));
     if isempty(dv)
-        text(ax,.5,.5,'No bonds','Units','normalized','HorizontalAlignment','center','Color','w');
+        text(ax,.5,.5,'No bonds','Units','normalized','HorizontalAlignment','center','Color',[.25 .25 .25]);
     end
 else
     text(ax,.5,.5,{'Vector data unavailable','This older dump needs the network payload'}, ...

@@ -25,8 +25,8 @@ cfg.kT = 4.14;
 cfg.chainModel = 'gaussian';       % 'cohen' (Langevin/Cohoen) or 'gaussian'
 cfg.kEndEnd = 1;               % end-end (cloud-cloud) rate multiplier on kChem; 1 = same as growth
 
-cfg.minKuhnCrosslink = 4;       % min Kuhn segments before termination on a crosslinker
-cfg.minKuhnEndEnd = 2;          % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (new chain >= 6)
+cfg.minKuhnCrosslink = 2;       % min Kuhn segments before termination on a crosslinker
+cfg.minKuhnEndEnd = 1;          % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (new chain >= 6)
 
 cfg.randSeed = 99999;               % integer = reproducible; [] = different every run
 
@@ -43,13 +43,13 @@ cfg.eqIntegrator = 'damped2nd'; % 'damped2nd' or 'overdamped'
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
 
-cfg.showLivePlot = false;
-cfg.makeVideo = false;
+cfg.showLivePlot = true;
+cfg.makeVideo = true;
 cfg.videoName = 'networkA_formation_v2_cleaned';
 cfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
 % Raw progress snapshots, visualized later with plotNetworkDumps(runDir).
 cfg.saveDumps = true;
-cfg.dumpUsagePercent = 0:5:100; % free-crosslinker consumption; seed excluded
+cfg.dumpUsagePercent = 0:2:100; % free-crosslinker consumption; seed excluded
 cfg.dumpEveryEvents = 0;       % set to 1 for every reaction, or N for every N
 cfg.dumpTimeInterval = 0;      % optional SSA-time interval (0 = disabled)
 cfg.dumpSaveDistributions = true;
