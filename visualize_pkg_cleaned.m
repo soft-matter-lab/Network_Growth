@@ -2,7 +2,7 @@
 % Accepts ONE simulation run folder or its dumps subfolder. No simulation runs.
 addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
 
-inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_pkg_cleaned\single_xA_0p0500_N_6714_20261026_122029_480'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
+inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_pkg_cleaned\single_xA_0p0500_N_6714_20261026_142359_249'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
 
 vizOptions = struct();
 vizOptions.outputRoot = ''; % '' = a new visualization folder under the selected run
@@ -16,17 +16,19 @@ vizOptions.videoPreview = false; % show the figure while rendering
 vizOptions.heatGrid = 150;
 % One saved state per video frame, with equal frame duration. No interpolation.
 
-% Individual checkpoint panels: network, Kuhn counts, end-to-end lengths.
+% Checkpoint panels: network, chain number fraction, weight fraction, 2D displacement.
 vizOptions.saveCheckpointPlots = true;
 vizOptions.checkpointUsagePercent = 0:5:100;
 vizOptions.saveFinalPlot = true; % final state after relaxation, separate from 100%
 % Histogram bins and axes are fixed across ALL saved states, including the final.
 % [] chooses a shared range automatically; set limits to compare different runs.
 vizOptions.kuhnXLim = [];        % contour length n, e.g. [0 100]
-vizOptions.endToEndXLim = [];    % end-to-end distance, e.g. [0 30]
+vizOptions.weightXLim = [];     % [] = same n range as kuhnXLim, or e.g. [0 100]
 vizOptions.kuhnYLim = [];        % fixed probability-per-bin y range, e.g. [0 .5]
-vizOptions.endToEndYLim = [];    % separate fixed probability y range, e.g. [0 .2]
-vizOptions.endToEndBins = 30;    % shared end-to-end bins
+vizOptions.weightYLim = [];     % independent fixed weight-fraction y range, e.g. [0 .2]
+vizOptions.displacementBins = 40; % bins per axis in the 2D endpoint histogram
+vizOptions.displacementLimit = []; % [] = run-wide auto; R means x,y span [-R,R]
+vizOptions.displacementCLim = [];  % [] = run-wide probability color scale; e.g. [0 .05]
 
 % Overlaid distributions: Kuhn counts, contour lengths n*b, end-to-end lengths.
 vizOptions.saveComparison = true;

@@ -23,7 +23,7 @@ end
 style = options.histogramStyle;
 fig = figure('Color','w','Visible',options.visible,'Position',[100 100 1100 750]);
 layout = tiledlayout(fig,2,2,'TileSpacing','compact');
-ax = nexttile(layout,1,[2 1]); rdf = [];
+ax = nexttile(layout,1); rdf = [];
 if isfield(s,'nodes')
     [x,y] = buildSkeleton(s.nodes,s.bonds,s.L);
     plot(ax,x,y,'-','Color',[.35 .35 .35]); hold(ax,'on');
@@ -42,7 +42,7 @@ ax = nexttile(layout,2);
 if isfield(s,'completed')
     histogram(ax,s.completed.kuhnCount,style.nEdges,'Normalization','probability');
     xlabel(ax,'n (Kuhn segments)'); ylabel(ax,'probability per bin');
-    title(ax,sprintf('Completed-chain contour length (N = %d)',numel(s.completed.kuhnCount))); grid(ax,'on');
+    title(ax,sprintf('Chain number fraction (N = %d)',numel(s.completed.kuhnCount))); grid(ax,'on');
     if isempty(s.completed.kuhnCount)
         text(ax,.5,.5,'No samples','Units','normalized','HorizontalAlignment','center');
     end
@@ -51,18 +51,45 @@ else
     text(ax,.5,.5,'Distribution payload was disabled','HorizontalAlignment','center'); axis(ax,'off');
 end
 ax.Tag = 'kuhnHistogram';
-ax = nexttile(layout,4);
+ax = nexttile(layout,3);
 if isfield(s,'completed')
-    histogram(ax,s.completed.endToEnd,style.rEdges,'Normalization','probability'); xlabel(ax,'end-to-end distance r');
-    ylabel(ax,'probability per bin'); title(ax,sprintf('Completed chains (N = %d)',numel(s.completed.endToEnd))); grid(ax,'on');
-    if isempty(s.completed.endToEnd)
-        text(ax,.5,.5,'No samples','Units','normalized','HorizontalAlignment','center');
+    [fraction,totalSegments] = chainWeightFractions(s.completed.kuhnCount,style.weightEdges);
+    histogram(ax,'BinEdges',style.weightEdges,'BinCounts',fraction,'Normalization','count');
+    xlabel(ax,'n (Kuhn segments)'); ylabel(ax,'fraction of completed-chain Kuhn segments');
+    title(ax,sprintf('Chain weight fraction (total n = %g)',totalSegments)); grid(ax,'on');
+    if totalSegments==0
+        text(ax,.5,.5,'No completed-chain segments','Units','normalized','HorizontalAlignment','center');
     end
-    xlim(ax,style.endToEndXLim); ylim(ax,style.endToEndYLim);
+    xlim(ax,style.weightXLim); ylim(ax,style.weightYLim);
 else
     text(ax,.5,.5,'Distribution payload was disabled','HorizontalAlignment','center'); axis(ax,'off');
 end
-ax.Tag = 'endToEndHistogram';
+ax.Tag = 'weightFractionHistogram';
+ax = nexttile(layout,4);
+[dv,available] = networkDumpDisplacements(s);
+if available
+    edges = style.displacementEdges;
+    centers = (edges(1:end-1)+edges(2:end))/2;
+    probability = zeros(numel(centers));
+    if ~isempty(dv)
+        probability = histcounts2(dv(:,1),dv(:,2),edges,edges)/size(dv,1);
+    end
+    imagesc(ax,centers,centers,probability');
+    set(ax,'YDir','normal'); axis(ax,'equal');
+    xlim(ax,style.displacementLim); ylim(ax,style.displacementLim);
+    clim(ax,style.displacementCLim); colormap(ax,parula);
+    cb = colorbar(ax); cb.Label.String = 'probability per 2D bin';
+    xline(ax,0,':','Color',[.7 .7 .7]); yline(ax,0,':','Color',[.7 .7 .7]);
+    xlabel(ax,'\Delta x'); ylabel(ax,'\Delta y');
+    title(ax,sprintf('End-to-end vectors (N = %d)',size(dv,1)));
+    if isempty(dv)
+        text(ax,.5,.5,'No bonds','Units','normalized','HorizontalAlignment','center','Color','w');
+    end
+else
+    text(ax,.5,.5,{'Vector data unavailable','This older dump needs the network payload'}, ...
+        'Units','normalized','HorizontalAlignment','center'); axis(ax,'off');
+end
+ax.Tag = 'displacementHistogram';
 title(layout,sprintf('A usage %.3g%% | event %d | t = %.5g | %s', ...
     s.usagePercent,s.event,s.ssaTime,s.phase),'Interpreter','none');
 if ~isempty(options.outputFile), exportgraphics(fig,options.outputFile,'Resolution',180); end

@@ -14,7 +14,7 @@ cfg.L = 100;            % box side length
 %   xA = 0.050 (5.0%)  -> NtotalScale = 1.25-1.30
 %   xA = 0.075 (7.5%)  -> NtotalScale = 1.35-1.40
 %   xA = 0.100 (10.0%) -> NtotalScale = 1.50-1.60
-cfg.NtotalScale = 1.35;  % multiplier on computed Ntotal (1 = none)
+cfg.NtotalScale = 1.4;  % multiplier on computed Ntotal (1 = none)
 cfg.areaFraction = 1.0; % Ntotal is computed: Ntotal*pi*b^2/4 = areaFraction*L^2
 cfg.xA = 0.05;         % crosslinker feed mole fraction
 cfg.fA = 4;            % crosslinker functionality
