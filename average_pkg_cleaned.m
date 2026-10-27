@@ -1,24 +1,26 @@
-% Three replicate-average figures: Kuhn number fraction, Kuhn weight fraction,
+% Three single-run or replicate-average figures: Kuhn number fraction, Kuhn weight fraction,
 % and end-to-end distance. Usage snapshots run left to right in each.
 % Each figure shares x/y limits across its own snapshots only.
 addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
-% Supply all replicate run folders with identical physics/composition and distinct seeds.
+% Supply one run folder, or multiple replicates with identical physics and distinct seeds.
+% A single run has fitted curves but no replicate SD shading or bootstrap CI.
 runFolders = {
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_001_rep_01_xA_0.05_seed_11231_20261026_164548_463'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_002_rep_02_xA_0.05_seed_2015_20261026_170757_626'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_003_rep_03_xA_0.05_seed_3215464_20261026_173121_381'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_004_rep_04_xA_0.05_seed_5_20261026_175125_518'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_005_rep_05_xA_0.05_seed_10_20261026_181604_459'
+    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_001_rep_01_xA_0.05_seed_11231_20261026_164548_463'
+    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_002_rep_02_xA_0.05_seed_2015_20261026_170757_626'
+    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_003_rep_03_xA_0.05_seed_3215464_20261026_173121_381'
+    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_004_rep_04_xA_0.05_seed_5_20261026_175125_518'
+    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_005_rep_05_xA_0.05_seed_10_20261026_181604_459'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_pkg_cleaned\single_xA_0p0500_N_6963_20261027_161959_436'
 };
 % Alternatively select a batch and xA; leave runFolders empty to use these:
 batchFolder = ''; % contains batch_summary.mat from run_pkg_cleaned_sweeps
 selectedXA = .05;
 
 averageOptions = struct();
-averageOptions.usagePercent = [5 50 100];
+averageOptions.usagePercent = [4 20 50 80 100];
 averageOptions.nBinWidth = 1;       % integer Kuhn bin width; larger = coarser histogram
 averageOptions.distanceBins = 30;
-averageOptions.kuhnYLim = [0 .35];   % fixed number-fraction y range; [] = automatic
+averageOptions.kuhnYLim = [0 .45];   % fixed number-fraction y range; [] = automatic
 averageOptions.weightYLim = [];    % weight figure's own shared range; independent of number figure
 averageOptions.showSpread = true;  % shaded +/- one replicate SD, not confidence intervals
 averageOptions.requireAllReplicates = true; % avoid changing replicate cohorts at later usage
@@ -27,7 +29,7 @@ averageOptions.fitFlory = true;    % fit number fractions; required for number-p
 averageOptions.fitFloryWeight = false; % true adds an independent weight fit; false skips that fit
 averageOptions.showWeightFromNumberFit = true; % show weight theory using number-fit p, even when fitFloryWeight=false
 averageOptions.floryModel = 'shifted'; % 'shifted' or 'original'
-averageOptions.floryMinCount = 4;  % shifted: n_min in (1-p)*p^(n-n_min), n>=n_min
+averageOptions.floryMinCount = 2;  % matches this run's minimum; shifted: n_min in (1-p)*p^(n-n_min)
 % original: (1-p)*p^(n-1), n>=1; floryMinCount only sets the fitting cutoff.
 % Shifted minimum must not exceed any observed count; neither model is extrapolated.
 averageOptions.floryOriginalAnchorWeight = 1; % original only: 1=ordinary LS; 10=soft anchor at cutoff
@@ -39,8 +41,9 @@ if isempty(runFolders) && ~isempty(batchFolder)
     rows = abs(data.summary.xA-selectedXA)<1e-10 & data.summary.status=="completed";
     runFolders = cellstr(data.summary.runDir(rows));
 end
-if numel(runFolders)<2
-    error('NetworkGrowth:ReplicateFolders','Set at least two runFolders, or batchFolder and selectedXA.');
+runFolders = cellstr(runFolders);
+if isempty(runFolders)
+    error('NetworkGrowth:ReplicateFolders','Set at least one run folder, or batchFolder and selectedXA.');
 end
 outputRoot = fullfile(fileparts(mfilename('fullpath')),'replicate_averages');
 [averageOutputDir,~] = createUniqueRunFolder(outputRoot,'average');
@@ -61,4 +64,4 @@ if averageOptions.fitFloryWeight
     disp(averageData.floryWeightFitTable(:,{'targetPercent','model','p','pCI95Low','pCI95High', ...
         'pFromNumber','pDifference','pDifferenceCI95Low','pDifferenceCI95High'}));
 end
-fprintf('Averaged distributions saved to: %s\n',averageOutputDir);
+fprintf('Distribution plots saved to: %s\n',averageOutputDir);

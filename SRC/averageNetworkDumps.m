@@ -1,6 +1,7 @@
 function [fig, result] = averageNetworkDumps(runDirs, options)
 % Equal-replicate mean probability histograms of completed chains at milestones.
 % Normalize each replicate separately before averaging; never pool chain counts.
+% One run is supported: show its fractions and fits, with undefined replicate SD/CI.
 % Returns three figures (number fraction, weight fraction, end-to-end distance),
 % each with one column per usage target. outputFile is a base name; exports add suffixes.
 if nargin < 2, options = struct(); end
@@ -22,7 +23,7 @@ if ~isempty(options.weightYLim)
 end
 runDirs = cellstr(runDirs);
 R = numel(runDirs); targets = unique(options.usagePercent(:)'); T = numel(targets);
-if R<2, error('NetworkGrowth:ReplicateFolders','At least two replicate folders are required.'); end
+if R<1, error('NetworkGrowth:ReplicateFolders','At least one run folder is required.'); end
 samples = cell(R,T,2); selection = table(); seeds = zeros(R,1);
 maxN = 1; maxD = 0;
 for rep = 1:R
@@ -235,7 +236,9 @@ for col = 1:3
             hSpread=fill(ax,[x fliplr(x)],[max(0,m-sd) fliplr(min(1,m+sd))],colors(col,:), ...
                 'FaceAlpha',.1,'EdgeColor','none','DisplayName','+/- 1 SD');
         end
-        hMean=plot(ax,x,m,'Color',colors(col,:),'LineWidth',2,'DisplayName','Replicate mean');
+        dataLabel='Replicate mean';
+        if R==1, dataLabel='Single run'; end
+        hMean=plot(ax,x,m,'Color',colors(col,:),'LineWidth',2,'DisplayName',dataLabel);
         title(ax,sprintf('%g%% usage',targets(t)),'FontSize',14,'FontWeight','bold');
         hasFit=fitEnabled(col) && isfinite(fits{col}{t}.p);
         hasPrediction=col==2 && ~isempty(predictionX{t});
@@ -261,19 +264,19 @@ for col = 1:3
                 'DisplayName',fitLabel,'Tag','floryFitCurve');
             if f.p==0, set(hFit,'Marker','o','MarkerSize',4); end
             if hasPrediction
-                cohortLabel=sprintf('%d replicates',f.replicateCount);
+                cohortLabel=replicateLabel(f.replicateCount);
                 if f.replicateCount~=result.floryFit{t}.replicateCount
                     cohortLabel=sprintf('%d weight / %d number replicates',f.replicateCount,result.floryFit{t}.replicateCount);
                 end
                 subtitle(ax,{sprintf('p_W = %.4f | p_N = %.4f',f.p,f.pFromNumber),cohortLabel},'FontSize',11);
             elseif col==2
-                subtitle(ax,sprintf('p_W = %.4f | %d replicates',f.p,f.replicateCount),'FontSize',11);
+                subtitle(ax,sprintf('p_W = %.4f | %s',f.p,replicateLabel(f.replicateCount)),'FontSize',11);
             else
-                subtitle(ax,sprintf('p = %.4f  |  %d replicates',f.p,f.replicateCount),'FontSize',11);
+                subtitle(ax,sprintf('p = %.4f  |  %s',f.p,replicateLabel(f.replicateCount)),'FontSize',11);
             end
         elseif hasPrediction
             number=result.floryFit{t};
-            cohortLabel=sprintf('%d replicates',nr);
+            cohortLabel=replicateLabel(nr);
             if nr~=number.replicateCount
                 cohortLabel=sprintf('%d weight / %d number replicates',nr,number.replicateCount);
             end
@@ -281,7 +284,7 @@ for col = 1:3
         elseif fitEnabled(col) && nr>0
             subtitle(ax,'No chains at or above fitting cutoff');
         else
-            subtitle(ax,sprintf('%d replicates',nr),'FontSize',11);
+            subtitle(ax,replicateLabel(nr),'FontSize',11);
         end
         xlim(ax,[edges(1) edges(end)]); ylim(ax,sharedYLim);
         handles=[hMean hSpread hFit hPrediction];
@@ -307,6 +310,10 @@ if ~isempty(options.outputFile)
         exportgraphics(fig(col),result.outputFiles{col},'Resolution',180);
     end
 end
+end
+
+function label = replicateLabel(count)
+if count==1, label='1 run'; else, label=sprintf('%d replicates',count); end
 end
 
 function physics = physicsConfig(cfg)

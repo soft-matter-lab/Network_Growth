@@ -263,6 +263,12 @@ Run `average_pkg_cleaned.m` beside the other drivers. Enter the replicate run
 folders in `runFolders` (e.g. five runs with distinct seeds), or leave that list
 empty and set `batchFolder` and `selectedXA` to select a composition from a sweep.
 The averager checks that all non-output settings match and seeds are distinct.
+One run is also accepted, e.g. `runFolders = {'E:\path\to\one_run'}` (or a
+single path string). It produces the same three figures, snapshot panels,
+Flory fits and number-predicted weight curves, labeled **Single run**. With
+only one run, replicate SDs and whole-replicate bootstrap confidence intervals
+are undefined (`NaN` in saved results), so no SD shading is drawn even when
+`showSpread=true`. Selecting just one completed job from a batch also works.
 
 `averageOptions.usagePercent = [25 50 100]` selects evolution points. Completed
 chain histograms use common bins across all runs and points. Each replicate is
