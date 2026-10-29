@@ -5,13 +5,13 @@ addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
 % Supply one run folder, or multiple replicates with identical physics and distinct seeds.
 % A single run has fitted curves but no replicate SD shading or bootstrap CI.
 runFolders = {
-    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_001_rep_01_xA_0.05_seed_11231_20261026_164548_463'
-    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_002_rep_02_xA_0.05_seed_2015_20261026_170757_626'
-    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_003_rep_03_xA_0.05_seed_3215464_20261026_173121_381'
-    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_004_rep_04_xA_0.05_seed_5_20261026_175125_518'
-    % 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_005_rep_05_xA_0.05_seed_10_20261026_181604_459'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_pkg_cleaned\single_xA_0p0500_N_6963_20261027_161959_436'
-};
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_001_rep_01_xA_0.05_seed_11231_20261027_184200_196'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_002_rep_02_xA_0.05_seed_2015_20261027_191753_800'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_003_rep_03_xA_0.05_seed_3215464_20261027_200106_877'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_004_rep_04_xA_0.05_seed_5_20261027_203523_143'
+    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_005_rep_05_xA_0.05_seed_10_20261027_212502_831'
+   
+    };
 % Alternatively select a batch and xA; leave runFolders empty to use these:
 batchFolder = ''; % contains batch_summary.mat from run_pkg_cleaned_sweeps
 selectedXA = .05;

@@ -4,25 +4,33 @@ baseCfg = defaultNetworkAConfig();
 
 % Shared physics (fixed across all runs except xA and optional NtotalScale).
 baseCfg.L = 100;
+
 baseCfg.Ntotal = [];             % computed feed; preserves nominal fill-mode rEq
-baseCfg.NtotalScale = 1.35;
+baseCfg.NtotalScale = 1.4;
 baseCfg.areaFraction = 1;
+
 baseCfg.xA = .05;                % used in 'replicates' mode
 baseCfg.fA = 4;
 baseCfg.fB = 2;                  % metadata; the current model uses B2
+
 baseCfg.b = 1.6;
 baseCfg.kT = 4.14;
 baseCfg.chainModel = 'gaussian';
+
 baseCfg.kEndEnd = 1;
-baseCfg.minKuhnCrosslink = 4;
-baseCfg.minKuhnEndEnd = 2;        % resulting joined chain has n >= 4
+
+baseCfg.minKuhnCrosslink = 2;
+baseCfg.minKuhnEndEnd = 1;        % resulting joined chain has n >= 4
+
 baseCfg.nucleation = false;
 baseCfg.kNuc = .001;
 baseCfg.nucAvoidOccupied = true;
+
 baseCfg.kRep = .828;
 baseCfg.kRepAnh = 1.656;
 baseCfg.rEqMode = 'fill';
 baseCfg.nodeAreaFraction = 1;
+
 baseCfg.eqIntegrator = 'damped2nd';
 baseCfg.massEq = 1;
 baseCfg.gammaEq = .5;
@@ -34,7 +42,7 @@ baseCfg.showFinalHistogram = false;
 baseCfg.saveFinalDistributions = false;
 baseCfg.saveData = false;        % full final state is saved by sweep.saveResults
 baseCfg.saveDumps = true;
-baseCfg.dumpUsagePercent = 0:5:100;
+baseCfg.dumpUsagePercent = 0:2:100;
 baseCfg.dumpEveryEvents = 0;     % 1 = every SSA reaction, N = every N reactions
 baseCfg.dumpTimeInterval = 0;    % positive SSA-time interval, 0 = off
 baseCfg.dumpSaveDistributions = true;

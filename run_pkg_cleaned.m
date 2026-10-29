@@ -43,6 +43,8 @@ cfg.eqIntegrator = 'damped2nd'; % 'damped2nd' or 'overdamped'
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
 
+cfg.allowSelfLoops = true;
+
 cfg.showLivePlot = true;
 cfg.makeVideo = true;
 cfg.videoName = 'networkA_formation_v2_cleaned';

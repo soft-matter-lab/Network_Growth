@@ -140,6 +140,18 @@ The script's `vizOptions` controls these exports:
   `0:5:100` for all checkpoints. `population` chooses the contour population and
   `showComparisonFigure` controls whether the comparison stays open.
 
+`vizOptions.showDanglingClouds = true` overlays Gaussian clouds for growing
+dangling chains on the network panels in both the replay movie and checkpoint /
+final PNGs. Set it to `false` for bonds and junctions only. Clouds have dark-blue
+centers fading outward through light blue to white; `danglingCloudOpacity`
+(default 0.85, range 0 to 1) controls their visibility and `heatGrid` controls
+resolution. Clouds use each dangling chain's parent position and Kuhn count,
+with the existing periodic envelope width proportional to `b*sqrt(n)`.
+Bare arms (`n=0`) and completed chains, including self-loops, add no clouds here.
+These are relative visualization envelopes (overlaps use the maximum), not a
+normalized density or a pair RDF g(r). No new distributions are added to the
+figures, and the simulation's reaction rates and live rendering are unchanged.
+
 Checkpoint and final-state figures contain four panels: network (upper left),
 chain-number fraction versus Kuhn count (upper right), chain weight fraction
 versus Kuhn count (lower left), and

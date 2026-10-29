@@ -3,11 +3,14 @@ function frameIndex = exportNetworkDumpVideo(runOrDumpDir, videoFile, options)
 % Equal duration per saved state; no reaction or mechanical-state interpolation.
 if nargin < 3, options = struct(); end
 options = mergeConfig(struct('videoFrameEvery',1,'videoFPS',6, ...
-    'videoHoldLastSeconds',2,'videoPreview',false,'heatGrid',150),options);
+    'videoHoldLastSeconds',2,'videoPreview',false,'heatGrid',150, ...
+    'showDanglingClouds',true,'danglingCloudOpacity',.85),options);
 validateattributes(options.videoFrameEvery,{'numeric'},{'scalar','integer','positive','finite'});
 validateattributes(options.videoFPS,{'numeric'},{'scalar','real','positive','finite'});
 validateattributes(options.videoHoldLastSeconds,{'numeric'},{'scalar','real','nonnegative','finite'});
 validateattributes(options.heatGrid,{'numeric'},{'scalar','integer','>=',2,'finite'});
+validateattributes(options.showDanglingClouds,{'logical','numeric'},{'scalar','binary'});
+validateattributes(options.danglingCloudOpacity,{'numeric'},{'scalar','real','finite','>=',0,'<=',1});
 [files,metadata,dumpDir] = listNetworkDumpFiles(runOrDumpDir);
 if isempty(files), error('NetworkGrowth:NoSnapshots','There are no completed snapshot files.'); end
 chosen = unique([1:options.videoFrameEvery:numel(files),numel(files)]);
@@ -16,6 +19,13 @@ visible = 'off'; if options.videoPreview, visible = 'on'; end
 % Empty plot([],[]) returns no Line handles, so seed both reservoir curves.
 viz = initVisualization(cfg,0,metadata.initialFreeCrosslinkers,metadata.initialMonomers,visible);
 figureCleanup = onCleanup(@()close(viz.fig));
+% Offline replay has a white background and optional blue dangling clouds.
+% The live simulation keeps its existing palette and rendering behavior.
+viz.showDanglingClouds = options.showDanglingClouds;
+set(viz.hHeat,'CData',ones(cfg.heatGrid,cfg.heatGrid,3), ...
+    'AlphaData',options.danglingCloudOpacity,'AlphaDataMapping','none','Tag','danglingClouds');
+set(viz.hChain,'Color',[.30 .30 .30],'LineWidth',1.4);
+set(viz.ax1,'Color','w');
 set(viz.fig,'PaperPositionMode','auto','InvertHardcopy','off');
 writer = VideoWriter(videoFile,'MPEG-4'); writer.FrameRate = options.videoFPS;
 open(writer);

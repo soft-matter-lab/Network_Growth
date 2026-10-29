@@ -5,7 +5,10 @@ function [fig, rdf] = plotNetworkDump(snapshotOrFile, options)
 % The optional second output returns numerical RDF data only; no RDF is plotted.
 if nargin < 2, options = struct(); end
 options = mergeConfig(struct('visible','on','outputFile','','rdfEdges',[], ...
-    'histogramStyle',[]),options);
+    'histogramStyle',[],'heatGrid',150,'showDanglingClouds',true,'danglingCloudOpacity',.85),options);
+validateattributes(options.showDanglingClouds,{'logical','numeric'},{'scalar','binary'});
+validateattributes(options.danglingCloudOpacity,{'numeric'},{'scalar','real','finite','>=',0,'<=',1});
+validateattributes(options.heatGrid,{'numeric'},{'scalar','integer','>=',2,'finite'});
 if isstruct(snapshotOrFile)
     s = snapshotOrFile;
 else
@@ -25,6 +28,14 @@ fig = figure('Color','w','Visible',options.visible,'Position',[100 100 1100 750]
 layout = tiledlayout(fig,2,2,'TileSpacing','compact');
 ax = nexttile(layout,1); rdf = [];
 if isfield(s,'nodes')
+    hold(ax,'on');
+    if options.showDanglingClouds && all(isfield(s,{'activeEnds','b'}))
+        [Xg,Yg] = meshgrid(linspace(0,s.L,options.heatGrid));
+        rgb = danglingCloudColors(s.activeEnds,s.nodes,s.L,s.b,Xg,Yg);
+        image(ax,[0 s.L],[0 s.L],rgb,'AlphaData',options.danglingCloudOpacity, ...
+            'AlphaDataMapping','none','Tag','danglingClouds');
+        set(ax,'YDir','normal');
+    end
     [x,y] = buildSkeleton(s.nodes,s.bonds,s.L);
     plot(ax,x,y,'-','Color',[.35 .35 .35]); hold(ax,'on');
     xy = wrapPoint(s.nodes(:,1:2),s.L);

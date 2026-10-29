@@ -2,7 +2,7 @@
 % Accepts ONE simulation run folder or its dumps subfolder. No simulation runs.
 addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
 
-inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261026_164546_823\run_001_rep_01_xA_0.05_seed_11231_20261026_164548_463'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
+inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_001_rep_01_xA_0.05_seed_11231_20261027_184200_196'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
 
 vizOptions = struct();
 vizOptions.outputRoot = ''; % '' = a new visualization folder under the selected run
@@ -16,9 +16,13 @@ vizOptions.videoPreview = false; % show the figure while rendering
 vizOptions.heatGrid = 150;
 % One saved state per video frame, with equal frame duration. No interpolation.
 
+% Dangling-chain Gaussian clouds in the network panels (movie + saved PNGs).
+vizOptions.showDanglingClouds = true; % false = bonds and junctions only
+vizOptions.danglingCloudOpacity = .85; % 0..1; dark-blue centers fade to pale blue/white
+
 % Checkpoint panels: network, chain number fraction, weight fraction, 2D displacement.
 vizOptions.saveCheckpointPlots = true;
-vizOptions.checkpointUsagePercent = 0:5:100;
+vizOptions.checkpointUsagePercent = 0:4:100;
 vizOptions.saveFinalPlot = true; % final state after relaxation, separate from 100%
 % Histogram bins and axes are fixed across ALL saved states, including the final.
 % [] chooses a shared range automatically; set limits to compare different runs.
