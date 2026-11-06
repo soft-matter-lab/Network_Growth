@@ -14,6 +14,8 @@ summary.status = repmat("pending",nRuns,1);
 summary.runDir = strings(nRuns,1);
 summary.stopReason = strings(nRuns,1);
 summary.errorMessage = strings(nRuns,1);
+summary.lammpsStatus = strings(nRuns,1);
+summary.lammpsRepulsiveRadius = nan(nRuns,1);
 names = {'nNodes','nBonds','nActiveEnds','freeCrosslinkers','freeMonomers', ...
     'usagePercent','ssaEvents','ssaTime','runtimeSeconds','nDumps','rEq'};
 for j = 1:numel(names), summary.(names{j}) = nan(nRuns,1); end
@@ -47,6 +49,10 @@ for k = 1:nRuns
         summary.runtimeSeconds(k) = results.runtimeSeconds;
         summary.nDumps(k) = results.nDumps;
         summary.rEq(k) = results.rEq;
+        summary.lammpsStatus(k) = string(results.lammps.status);
+        if isfield(results.lammps,'rRepulsive')
+            summary.lammpsRepulsiveRadius(k) = results.lammps.rRepulsive;
+        end
         summary.stopReason(k) = string(results.stopReason);
         summary.status(k) = "completed";
         clear results; % do not accumulate entire networks across a large batch

@@ -10,6 +10,8 @@ the MATLAB path, or use the drivers which do this automatically.
 - `run_pkg_cleaned_batch.m`: older custom-override driver, retained separately.
 - `visualize_pkg_cleaned.m`: offline driver; point it at saved dumps to export a
   network movie and distribution figures without running the simulation.
+- `build_lammps_ingredients.m`: offline driver; point it at an older simulation
+  folder to build LAMMPS data and tables from its saved final state.
 
 Edit the new driver's settings before running it. Its default plan is 15 runs:
 five compositions, repeated for three seeds, at fixed `fA = 4`.
@@ -50,6 +52,143 @@ seed, composition, counts, final conversion, termination reason and output path.
 jammed state; inspect `stopReason` and `usagePercent`. Failed runs retain their
 completed snapshots and an error report. `sweep.continueOnError` controls whether
 later runs proceed after a MATLAB error. Results are not accumulated in memory.
+
+## LAMMPS export
+
+Both `run_pkg_cleaned.m` and `run_pkg_cleaned_sweeps.m` enable
+`saveLammps = true`. After final relaxation, each sample folder receives:
+
+- `network.data`: LAMMPS data file with `Atoms # bpm/sphere` and `Bonds`.
+- `bond.table`: NetworkGen's `KEY` section, with rows
+  `bondID atom1 atom2 N_Kuhn b`, for your custom `bpm/poly` bond style.
+- `network.localdensity.table`: one type-1 local-density potential.
+
+This is a final network export, independent of MAT progress dumps, `saveData`,
+and `sweep.saveResults`. The library default is off; enable `cfg.saveLammps`
+and set `cfg.outputDir` for programmatic runs. Existing export files are never
+overwritten. Paths, counts, omitted loop rows, and potential parameters are
+returned in `results.lammps` and included in the saved final MAT data when enabled.
+Sweep summaries include `lammpsStatus` and `lammpsRepulsiveRadius`.
+
+The radius uses the **actual formed crosslinker count**, including the seed and
+any isolated nuclei, rather than the feed count:
+
+```text
+N_kuhn_tot = sum(bonds(:,3)) + sum(activeEnds(:,4))
+N_formed  = size(nodes,1)
+A_node    = (N_kuhn_tot / N_formed) * pi*b^2/4
+r_repulsive = sqrt(A_node/pi) = (b/2)*sqrt(N_kuhn_tot/N_formed)
+```
+
+By default, `lammpsIncludeDanglingKuhn = true`: count all Kuhn segments in
+completed inter-junction chains, self-loops, and dangling chains. Unused
+background Kuhn segments and unused background crosslinkers are excluded from
+the numerator and denominator, respectively. Bare arms contain zero segments.
+Dangling tips have no explicit coordinates in this growth model and are not
+exported as extra atoms or bonds. Setting `lammpsIncludeDanglingKuhn = false`
+restores the reference generator's completed-chain-only counting convention.
+
+Following the reference potential, `R1 = 0.8*r_repulsive`,
+`R2 = 4*r_repulsive`, `rho0 = 0.8*(R2/r_repulsive)^2 = 12.8`, and
+`F(rho) = lammpsKLD*(rho-rho0)^2`. The associated pair repulsion cutoff is
+`rc = 2*r_repulsive`, available as `results.lammps.pairRepulsionCutoff` and
+in the data-file comment. The atom diameter/density remain 1/1, matching
+NetworkGen; the effective repulsion radius is carried by the potential cutoffs.
+This exported potential does not change the growth simulation's `rEq`,
+pairwise relaxation, or chain model.
+
+| Setting | Default |
+| --- | --- |
+| `lammpsKLD` | `0.414` (NetworkGen class default; independently adjustable) |
+| `lammpsNRho` | `100000` density samples |
+| `lammpsRhoRange` | `[0 500]` |
+| `lammpsZThickness` | `10`, with atoms at z=0 |
+| `lammpsIncludeDanglingKuhn` | `true` (completed chains, loops, and dangling chains) |
+| `lammpsPeriodicPolicy` | `'warn'`; use `'error'` to reject image changes |
+
+The density table has exactly `lammpsNRho` samples with spacing
+`(rho_max-rho_min)/(lammpsNRho-1)`, consistent with the
+[LAMMPS local-density reader](https://github.com/lammps/lammps/blob/stable/src/MANYBODY/pair_local_density.cpp).
+This corrects the reference generator's extra sample and inconsistent spacing.
+The bond table is a per-chain parameter table for your custom style, not the
+energy/force grid used by LAMMPS `bond_style table`.
+
+Use `dimension 2`, `atom_style bpm/sphere`, and periodic x/y boundaries in your
+LAMMPS input. Coordinates are wrapped into `[0,L)`, preserving node IDs.
+For your existing hybrid pair setup, point `read_data` at `network.data`,
+the `bpm/poly` bond coefficients at `bond.table KEY`, and
+`pair_coeff * * local/density` at `network.localdensity.table`.
+Choose the other force, damping, and fracture coefficients in your LAMMPS input.
+
+Self-loops are omitted from both exported bond lists because LAMMPS rejects
+atom-to-itself bonds; their segments still contribute to the radius. Original
+bond-row mappings and omitted rows are recorded in `results.lammps`. They remain
+unchanged in the growth results and snapshots. A state with no inter-junction
+bonds is reported as `skipped_no_interjunction_bonds`, with a warning and no
+three-file export, since the custom bond reader rejects an empty table.
+
+LAMMPS `bpm/poly` uses minimum-image bond vectors. If a growth strand's stored
+periodic image selects a different vector, export emits a warning, records its
+original row in `nonMinimumImageBondRows`, and reports
+`written_with_image_changes`. Such a state will start with different strand
+extensions in LAMMPS. Use `lammpsPeriodicPolicy = 'error'` to prevent that export;
+a standard LAMMPS data file cannot encode independent per-bond image offsets.
+
+### Build ingredients from an older saved simulation
+
+Run **`build_lammps_ingredients.m`** in the project root. Set `inputFolder`
+to one simulation folder (or its `dumps` subfolder), or leave it empty for a
+folder picker. The driver writes the three LAMMPS files directly into that
+simulation folder without rerunning growth or changing any saved input data.
+
+Automatic source selection prefers `results_struct.mat`, then the raw final
+`Network_PartA_v2_Cleaned_Data.mat` (or a custom-named MAT containing `nodes`,
+`bonds`, `activeEnds`, and `cfg`), then a final network snapshot. It reads the
+original box size `L`, Kuhn length `b`, coordinates, Kuhn counts, and periodic
+images. Older files do not need any of the new LAMMPS configuration fields.
+The builder always includes connected, loop, and dangling segments in the
+radius calculation and uses only formed crosslinkers, excluding both free
+reservoirs. Saved output paths are ignored in favor of the selected folder.
+
+The additional `lammps_build_report.mat` records source filename/phase, counts,
+radius/cutoffs, output paths, and export settings. Existing LAMMPS files or a
+build report are never overwritten; set `builderOptions.outputDir` to a fresh
+folder to make another export. `builderOptions.sourceFile` can select a
+specific MAT file (absolute path or relative to the simulation folder).
+If no final state exists, the builder stops. Set
+`builderOptions.allowLatestSnapshot = true` explicitly to use the latest
+available network checkpoint; it warns and records that this state is non-final.
+
+Distribution-only dumps, histogram CSVs, or an atom-only text dump cannot
+reconstruct the complete export. The builder requires the saved node positions,
+bond endpoints/Kuhn counts/periodic images, dangling-chain data, and `L`/`b`.
+It reports missing data instead of inventing geometry or treating all feed
+segments as chain-bound material.
+
+Programmatic use:
+
+```matlab
+addpath('SRC')
+info = buildLammpsIngredients(runDir);
+% Optional export settings (never overrides saved L or b):
+options.exportConfig = struct('lammpsKLD',0.414,'lammpsNRho',100000);
+options.outputDir = fullfile(runDir,'lammps_rebuild');
+info = buildLammpsIngredients(runDir,options);
+```
+
+The lower-level exporter also accepts a previously loaded final state:
+
+```matlab
+addpath('SRC')
+s = load(fullfile(runDir,'results_struct.mat'),'results');
+r = s.results;
+cfg = r.config;
+cfg.outputDir = runDir; % or a fresh folder if already exported
+info = writeLammpsNetwork(r.nodes,r.bonds,r.activeEnds,cfg);
+```
+
+Run the export and saved-state builder regression tests with
+`runtests({'tests/testLammpsExport.m','tests/testLammpsIngredientsBuilder.m'})`.
 
 ## Progress dumps
 
@@ -131,11 +270,11 @@ The script's `vizOptions` controls these exports:
   `videoHoldLastSeconds` control playback. `videoPreview` shows rendering live.
 - `saveCheckpointPlots`: one PNG per distinct saved state matching
   `checkpointUsagePercent` (default `0:5:100`), with network, chain-number and
-  weight-fraction histograms, and 2D displacement. Several crossed milestones can share
+  weight-fraction histograms, 2D displacement, and bond prestretch. Several crossed milestones can share
   one state/PNG. `checkpoint_index.csv` maps the files to requested/actual usage.
 - `saveFinalPlot`: a separate `final_state.png` for the final relaxed network.
 - `saveComparison`: `distribution_comparison.png`, overlaying Kuhn-count,
-  physical contour-length and completed-chain end-to-end distributions using
+  physical contour-length, completed-chain end-to-end, and prestretch distributions using
   shared bins. `comparisonUsagePercent` defaults to `[0 25 50 75 100]`; set it to
   `0:5:100` for all checkpoints. `population` chooses the contour population and
   `showComparisonFigure` controls whether the comparison stays open.
@@ -149,13 +288,12 @@ resolution. Clouds use each dangling chain's parent position and Kuhn count,
 with the existing periodic envelope width proportional to `b*sqrt(n)`.
 Bare arms (`n=0`) and completed chains, including self-loops, add no clouds here.
 These are relative visualization envelopes (overlaps use the maximum), not a
-normalized density or a pair RDF g(r). No new distributions are added to the
-figures, and the simulation's reaction rates and live rendering are unchanged.
+normalized density or a pair RDF g(r). The simulation's reaction rates and
+live rendering are unchanged.
 
-Checkpoint and final-state figures contain four panels: network (upper left),
-chain-number fraction versus Kuhn count (upper right), chain weight fraction
-versus Kuhn count (lower left), and
-a 2D end-to-end displacement histogram (lower right).
+Checkpoint and final-state figures contain five panels: network, chain-number
+fraction, and chain weight fraction across the top; 2D end-to-end displacement
+at lower left; and bond prestretch across the remaining lower panels.
 Histogram **bins and x/y limits stay fixed across all snapshots**. The
 visualizer scans the saved states, including final relaxation, to determine ranges
 and peak bin probabilities. Each histogram has its own fixed probability-axis limits.
@@ -179,6 +317,29 @@ Set `vizOptions.kuhnXLim`, `vizOptions.weightXLim`, and
 runs; `[]` chooses common ranges automatically within the selected run.
 Both length panels use integer-centered bins. Resolved bins/limits are
 saved in `visualization_report.mat` as `report.histogramStyle`.
+
+The prestretch distribution uses the dimensionless quantity
+`lambda_i = r_i/(n_i*b)`, the end-to-end length divided by the contour length
+of each completed bond. This is computed directly from existing saved data;
+no simulation rerun or new dump fields are needed. Magnitude-only distribution
+dumps use `completed.endToEnd` and `completed.kuhnCount` with the saved `b`
+(or saved `contourLength` if `b` is absent). Network-only snapshots reconstruct
+lengths using `nodes`, `bonds`, and the stored periodic images. The bond vectors
+are not changed to a new minimum image.
+
+Self-loops contribute at lambda=0; dangling chains are excluded because no
+explicit tip position/end-to-end length was saved. Invalid or zero-contour
+samples are excluded. Values above lambda=1 are retained; the dotted line at
+1 marks the contour length. This is the requested contour-normalized extension,
+not normalization by the Gaussian coil size `sqrt(n)*b`.
+
+`vizOptions.prestretchBins` (default 30), `prestretchXLim`, and `prestretchYLim`
+control the new panel. Empty limits select common ranges across every saved
+state, including final relaxation. Probability per bin is normalized by the
+number of valid completed bonds; manually cropped ranges retain that denominator.
+The comparison figure also includes prestretch and uses the same bins and y
+limits in the visualizer. `comparison_index.csv` records its sample count and
+availability. `networkDumpPrestretch(snapshot)` returns the raw lambda values.
 
 The 2D panel translates the first endpoint of each completed bond to (0,0) and
 bins the other endpoint at `dv = x_j + image*L - x_i`. Translation preserves
@@ -246,16 +407,16 @@ fig = plotNetworkDump(snapshots{end},struct('histogramStyle',style));
 plotNetworkDump(fullfile(runDir,'dumps','snapshot_000010.mat'));
 ```
 
-The comparison plots Kuhn counts, physical contour lengths, and completed-chain
-end-to-end distances. `population` selects `'completed'` (default), `'dangling'`,
-or `'all'` for the contour panels; the end-to-end panel always uses completed
+The comparison plots Kuhn counts, physical contour lengths, completed-chain
+end-to-end distances, and prestretch. `population` selects `'completed'` (default), `'dangling'`,
+or `'all'` for the contour panels; the end-to-end and prestretch panels always use completed
 chains. Empty populations are labeled, not replaced with zero-length chains.
 `selection` reports files, events, actual conversions and sample counts.
 Only saved milestone markers are selected; missing targets produce a warning.
 Multiple targets can refer to the same file in small systems. Replicates are
 shown separately, without automatic pooling or averaging.
 
-Optional `nEdges`, `contourEdges`, `rEdges` fix common bins across comparisons;
+Optional `nEdges`, `contourEdges`, `rEdges`, `prestretchEdges` fix common bins across comparisons;
 `visible = 'off'` and `outputFile = 'plot.png'` support noninteractive export.
 `loadNetworkDumps(runDir)` loads all snapshots. The comparison plot retains only
 the requested milestones; it scans other files one at a time. You can also use

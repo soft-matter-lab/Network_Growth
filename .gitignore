@@ -19,7 +19,11 @@ bin-release/
 
 # Simulation output
 batch_runs_*/
-tests/
+tests/*
+!tests/testLammpsExport.m
+!tests/testLammpsIngredientsBuilder.m
+!tests/testNetworkPrestretch.m
+!tests/testNetworkDumpVisualization.m
 runs_pkg_cleaned/
 replicate_averages/
 SESSION_NOTES.md

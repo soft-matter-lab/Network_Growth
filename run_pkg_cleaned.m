@@ -14,7 +14,7 @@ cfg.L = 100;            % box side length
 %   xA = 0.050 (5.0%)  -> NtotalScale = 1.25-1.30
 %   xA = 0.075 (7.5%)  -> NtotalScale = 1.35-1.40
 %   xA = 0.100 (10.0%) -> NtotalScale = 1.50-1.60
-cfg.NtotalScale = 1.4;  % multiplier on computed Ntotal (1 = none)
+cfg.NtotalScale = 1.75;  % multiplier on computed Ntotal (1 = none)
 cfg.areaFraction = 1.0; % Ntotal is computed: Ntotal*pi*b^2/4 = areaFraction*L^2
 cfg.xA = 0.05;         % crosslinker feed mole fraction
 cfg.fA = 4;            % crosslinker functionality
@@ -22,11 +22,11 @@ cfg.fB = 2;            % linker functionality (kept as metadata)
 
 cfg.b = 1.6;
 cfg.kT = 4.14;
-cfg.chainModel = 'gaussian';       % 'cohen' (Langevin/Cohoen) or 'gaussian'
+cfg.chainModel = 'cohen';       % 'cohen' (Langevin/Cohoen) or 'gaussian'
 cfg.kEndEnd = 1;               % end-end (cloud-cloud) rate multiplier on kChem; 1 = same as growth
 
-cfg.minKuhnCrosslink = 2;       % min Kuhn segments before termination on a crosslinker
-cfg.minKuhnEndEnd = 1;          % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (new chain >= 6)
+cfg.minKuhnCrosslink = 6;       % min Kuhn segments before termination on a crosslinker
+cfg.minKuhnEndEnd = 3;          % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (new chain >= 6)
 
 cfg.randSeed = 99999;               % integer = reproducible; [] = different every run
 
@@ -43,15 +43,19 @@ cfg.eqIntegrator = 'damped2nd'; % 'damped2nd' or 'overdamped'
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
 
-cfg.allowSelfLoops = true;
+cfg.allowSelfLoops = false;
 
 cfg.showLivePlot = true;
 cfg.makeVideo = true;
 cfg.videoName = 'networkA_formation_v2_cleaned';
 cfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
+% Three final LAMMPS files in this sample's folder.
+cfg.saveLammps = true;
+cfg.lammpsKLD = 0.414;
+cfg.lammpsIncludeDanglingKuhn = true; % all chain-bound Kuhn segments; exclude free background B
 % Raw progress snapshots, visualized later with plotNetworkDumps(runDir).
 cfg.saveDumps = true;
-cfg.dumpUsagePercent = 0:2:100; % free-crosslinker consumption; seed excluded
+cfg.dumpUsagePercent = 0:10:100; % free-crosslinker consumption; seed excluded
 cfg.dumpEveryEvents = 0;       % set to 1 for every reaction, or N for every N
 cfg.dumpTimeInterval = 0;      % optional SSA-time interval (0 = disabled)
 cfg.dumpSaveDistributions = true;

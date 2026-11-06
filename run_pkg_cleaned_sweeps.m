@@ -41,6 +41,9 @@ baseCfg.makeVideo = false;
 baseCfg.showFinalHistogram = false;
 baseCfg.saveFinalDistributions = false;
 baseCfg.saveData = false;        % full final state is saved by sweep.saveResults
+baseCfg.saveLammps = true;       % three final LAMMPS files inside every sample folder
+baseCfg.lammpsKLD = 0.414;
+baseCfg.lammpsIncludeDanglingKuhn = true; % all chain-bound Kuhn segments; exclude free background B
 baseCfg.saveDumps = true;
 baseCfg.dumpUsagePercent = 0:2:100;
 baseCfg.dumpEveryEvents = 0;     % 1 = every SSA reaction, N = every N reactions

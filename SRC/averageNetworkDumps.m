@@ -319,7 +319,7 @@ end
 function physics = physicsConfig(cfg)
 % Compare every non-output setting, including chemistry and relaxation settings.
 names = fieldnames(cfg);
-output = startsWith(names,{'dump','save','show','video','output','data','plot','eqPlot','heatGrid'});
+output = startsWith(names,{'dump','save','show','video','output','data','plot','eqPlot','heatGrid','lammps'});
 output = output | ismember(names,{'randSeed','makeVideo'});
 physics = orderfields(rmfield(cfg,names(output)));
 end

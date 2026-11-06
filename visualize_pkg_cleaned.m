@@ -2,7 +2,7 @@
 % Accepts ONE simulation run folder or its dumps subfolder. No simulation runs.
 addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
 
-inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_001_rep_01_xA_0.05_seed_11231_20261027_184200_196'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
+inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_pkg_cleaned\single_xA_0p0500_N_8704_20261105_173707_147'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
 
 vizOptions = struct();
 vizOptions.outputRoot = ''; % '' = a new visualization folder under the selected run
@@ -20,7 +20,7 @@ vizOptions.heatGrid = 150;
 vizOptions.showDanglingClouds = true; % false = bonds and junctions only
 vizOptions.danglingCloudOpacity = .85; % 0..1; dark-blue centers fade to pale blue/white
 
-% Checkpoint panels: network, chain number fraction, weight fraction, 2D displacement.
+% Checkpoint panels: network, chain number/weight fractions, displacement, prestretch.
 vizOptions.saveCheckpointPlots = true;
 vizOptions.checkpointUsagePercent = 0:4:100;
 vizOptions.saveFinalPlot = true; % final state after relaxation, separate from 100%
@@ -30,6 +30,9 @@ vizOptions.kuhnXLim = [];        % contour length n, e.g. [0 100]
 vizOptions.weightXLim = [];     % [] = same n range as kuhnXLim, or e.g. [0 100]
 vizOptions.kuhnYLim = [];        % fixed probability-per-bin y range, e.g. [0 .5]
 vizOptions.weightYLim = [];     % independent fixed weight-fraction y range, e.g. [0 .2]
+vizOptions.prestretchBins = 30; % lambda_i = bond length / (n_i*b), dimensionless
+vizOptions.prestretchXLim = []; % [] = run-wide range, includes lambda > 1 if present
+vizOptions.prestretchYLim = []; % [] = run-wide probability-per-bin scale
 vizOptions.displacementBins = 40; % bins per axis in the 2D endpoint histogram
 vizOptions.displacementLimit = []; % [] = run-wide auto; R means x,y span [-R,R]
 vizOptions.displacementCLim = [];  % [] = shared robust auto scale; or force e.g. [0 .02]
@@ -37,7 +40,7 @@ vizOptions.displacementColorPercentile = 98; % occupied-bin percentile across ru
 % Empty bins are white; gold-to-red colors show increasing probability.
 % The color cap stays fixed across snapshots. Higher bins saturate, without changing data.
 
-% Overlaid distributions: Kuhn counts, contour lengths n*b, end-to-end lengths.
+% Overlaid distributions: Kuhn counts, contour lengths, end-to-end lengths, prestretch.
 vizOptions.saveComparison = true;
 vizOptions.comparisonUsagePercent = [0 25 50 75 100]; % or 0:5:100 for every milestone
 vizOptions.population = 'completed'; % 'completed', 'dangling', or 'all' for contour panels

@@ -2,11 +2,12 @@ function [fig, selection] = plotNetworkDumps(runDirs, options)
 % Compare distributions at conversion milestones, within/across runs.
 % runDirs: one run/dumps directory, or a cell/string array of directories.
 % options: usagePercent, population ('completed','dangling','all'), labels,
-% nEdges, contourEdges, rEdges, visible, outputFile. Shared probability bins.
-% End-to-end distances are defined only for completed chains in this model.
+% nEdges, contourEdges, rEdges, prestretchEdges, visible, outputFile.
+% End-to-end distance and lambda=r/(n*b) use completed chains only.
 if nargin < 2, options = struct(); end
 defaults = struct('usagePercent',[0 25 50 75 100],'population','completed', ...
     'labels',{{}},'nEdges',[],'contourEdges',[],'rEdges',[], ...
+    'prestretchEdges',[],'prestretchBins',30,'prestretchXLim',[],'prestretchYLim',[], ...
     'visible','on','outputFile','');
 options = mergeConfig(defaults,options);
 population = validatestring(options.population,{'completed','dangling','all'});
@@ -18,7 +19,14 @@ labels = cellstr(labels);
 if numel(labels) ~= numel(runDirs)
     error('NetworkGrowth:PlotLabels','Supply one label per run directory.');
 end
-selection = table(); samples = cell(0,3); legendLabels = {};
+validateattributes(options.prestretchBins,{'numeric'},{'scalar','integer','positive','finite'});
+for name = {'prestretchXLim','prestretchYLim'}
+    limits = options.(name{1});
+    if ~isempty(limits)
+        validateattributes(limits,{'numeric'},{'vector','numel',2,'real','finite','nonnegative','increasing'});
+    end
+end
+selection = table(); samples = cell(0,4); legendLabels = {};
 for j = 1:numel(runDirs)
     [snapshots,~,index] = loadNetworkDumps(runDirs{j},options.usagePercent);
     for target = unique(options.usagePercent(:)')
@@ -40,24 +48,31 @@ for j = 1:numel(runDirs)
                 n = [s.completed.kuhnCount;s.dangling.kuhnCount];
                 contour = [s.completed.contourLength;s.dangling.contourLength];
         end
-        samples(end+1,:) = {n,contour,s.completed.endToEnd}; %#ok<AGROW>
+        [lambda,lambdaAvailable] = networkDumpPrestretch(s);
+        samples(end+1,:) = {n,contour,s.completed.endToEnd,lambda}; %#ok<AGROW>
         legendLabels{end+1} = sprintf('%s: %g%% (actual %.3g%%)',labels{j},target,s.usagePercent); %#ok<AGROW>
         row = table(j,string(runDirs{j}),string(index.file(k)),target, ...
             s.usagePercent,s.event,s.ssaTime,numel(n),numel(s.completed.endToEnd), ...
+            numel(lambda),lambdaAvailable, ...
             'VariableNames',{'runIndex','runDir','file','targetPercent', ...
-            'actualPercent','event','ssaTime','contourSampleCount','endToEndSampleCount'});
+            'actualPercent','event','ssaTime','contourSampleCount','endToEndSampleCount', ...
+            'prestretchSampleCount','prestretchAvailable'});
         selection = [selection;row]; %#ok<AGROW>
     end
 end
 if isempty(selection), error('NetworkGrowth:NoMilestones','No requested checkpoints were saved.'); end
-edges = {options.nEdges,options.contourEdges,options.rEdges};
-for col = 1:3
+edges = {options.nEdges,options.contourEdges,options.rEdges,options.prestretchEdges};
+for col = 1:4
     if isempty(edges{col})
         values = vertcat(samples{:,col});
         if col == 1
             if isempty(values), values = 1; end
             lo = floor(min(values))-.5; hi = ceil(max(values))+.5;
             edges{col} = linspace(lo,hi,min(100,round(hi-lo))+1);
+        elseif col == 4
+            limits = options.prestretchXLim;
+            if isempty(limits), limits = [0 1.05*max([values;1])]; end
+            edges{col} = linspace(limits(1),limits(2),options.prestretchBins+1);
         else
             hi = max([vertcat(values);1]);
             edges{col} = linspace(0,hi,31);
@@ -66,17 +81,19 @@ for col = 1:3
     validateattributes(edges{col},{'numeric'},{'vector','real','finite','increasing'});
     if numel(edges{col}) < 2, error('NetworkGrowth:PlotBins','At least two bin edges are required.'); end
 end
-fig = figure('Color','w','Visible',options.visible,'Position',[100 100 1400 470]);
-layout = tiledlayout(fig,1,3,'TileSpacing','compact');
+fig = figure('Color','w','Visible',options.visible,'Position',[100 100 1300 850]);
+layout = tiledlayout(fig,2,2,'TileSpacing','compact');
 colors = lines(size(samples,1));
-xlabels = {'n (Kuhn segments)','contour length n b','end-to-end distance r'};
-titles = {[population ' chains'],[population ' chains'],'completed chains only'};
-for col = 1:3
+xlabels = {'n (Kuhn segments)','contour length n b','end-to-end distance r','\lambda = r / (n b)'};
+titles = {[population ' chains'],[population ' chains'],'completed chains only','Bond prestretch (completed chains)'};
+for col = 1:4
     ax = nexttile(layout); hold(ax,'on');
     for k = 1:size(samples,1)
         v = samples{k,col};
         if isempty(v)
-            plot(ax,NaN,NaN,'Color',colors(k,:),'DisplayName',[legendLabels{k} ' (empty)']);
+            suffix = ' (empty)';
+            if col == 4 && ~selection.prestretchAvailable(k), suffix = ' (unavailable)'; end
+            plot(ax,NaN,NaN,'Color',colors(k,:),'DisplayName',[legendLabels{k} suffix]);
         else
             % Normalize by all samples, even when user-specified bins clip tails.
             counts = histcounts(v,edges{col}) / numel(v);
@@ -86,7 +103,13 @@ for col = 1:3
     end
     xlabel(ax,xlabels{col}); ylabel(ax,'probability per bin');
     title(ax,titles{col}); grid(ax,'on');
-    if col == 3, legend(ax,'show','Location','eastoutside','Interpreter','none'); end
+    if col == 4
+        ax.Tag = 'prestretchComparison';
+        xlim(ax,[edges{col}(1),edges{col}(end)]);
+        if ~isempty(options.prestretchYLim), ylim(ax,options.prestretchYLim); end
+        xline(ax,1,':','\lambda = 1','LabelVerticalAlignment','middle','HandleVisibility','off');
+        legend(ax,'show','Location','eastoutside','Interpreter','none');
+    end
 end
 title(layout,'Chain distributions at free-crosslinker usage checkpoints');
 if ~isempty(options.outputFile), exportgraphics(fig,options.outputFile,'Resolution',180); end

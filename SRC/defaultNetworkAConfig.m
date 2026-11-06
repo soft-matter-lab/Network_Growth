@@ -75,6 +75,15 @@ cfg.saveData = true;
 cfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
 cfg.outputDir = '';  % optional run folder; when non-empty, data/movie save inside this folder
 
+% Final LAMMPS export (NetworkGen bpm/poly + local/density formats).
+cfg.saveLammps = false;              % enabled in both run drivers; requires outputDir
+cfg.lammpsIncludeDanglingKuhn = true; % completed chains + loops + dangling chains; no free B
+cfg.lammpsKLD = 0.414;               % F(rho) = kLD*(rho-rho0)^2; NetworkGen default
+cfg.lammpsNRho = 100000;             % number of density samples, including both endpoints
+cfg.lammpsRhoRange = [0 500];
+cfg.lammpsZThickness = 10;           % z = 0, bounds +/- thickness/2 (2D network)
+cfg.lammpsPeriodicPolicy = 'warn';   % 'error' rejects non-minimum-image bond vectors
+
 % Incremental raw-state dumps (no plotting during capture).
 cfg.saveDumps = false;
 cfg.dumpUsagePercent = 0:5:100; % consumption of initially FREE A, excluding seed

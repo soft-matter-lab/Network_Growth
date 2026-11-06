@@ -7,15 +7,17 @@ options = mergeConfig(struct('kuhnXLim',[],'endToEndXLim',[], ...
     'histogramYLim',[],'kuhnYLim',[],'endToEndYLim',[],'endToEndBins',30, ...
     'displacementLimit',[],'displacementBins',40,'displacementCLim',[], ...
     'displacementColorPercentile',98, ...
-    'weightXLim',[],'weightYLim',[]),options);
+    'weightXLim',[],'weightYLim',[], ...
+    'prestretchXLim',[],'prestretchYLim',[],'prestretchBins',30),options);
 validateattributes(options.endToEndBins,{'numeric'},{'scalar','integer','positive','finite'});
+validateattributes(options.prestretchBins,{'numeric'},{'scalar','integer','positive','finite'});
 validateattributes(options.displacementBins,{'numeric'},{'scalar','integer','positive','finite'});
 validateattributes(options.displacementColorPercentile,{'numeric'},{'scalar','real','finite','>',0,'<=',100});
 if ~isempty(options.displacementLimit)
     validateattributes(options.displacementLimit,{'numeric'},{'scalar','real','positive','finite'});
 end
 names = {'kuhnXLim','endToEndXLim','histogramYLim','kuhnYLim','endToEndYLim', ...
-    'displacementCLim','weightXLim','weightYLim'};
+    'displacementCLim','weightXLim','weightYLim','prestretchXLim','prestretchYLim'};
 for j = 1:numel(names)
     limits = options.(names{j});
     if ~isempty(limits)
@@ -31,7 +33,7 @@ else
     [files,~,dumpDir] = listNetworkDumpFiles(source);
     count = numel(files);
 end
-maxN = 1; maxR = 1; maxComponent = 0;
+maxN = 1; maxR = 1; maxComponent = 0; maxLambda = 1;
 for k = 1:count
     s = getSnapshot(source,files,dumpDir,k);
     if isfield(s,'completed')
@@ -40,9 +42,25 @@ for k = 1:count
     end
     dv = networkDumpDisplacements(s);
     maxComponent = max([maxComponent;abs(dv(:))]);
+    maxLambda = max([maxLambda;networkDumpPrestretch(s)]);
 end
 style = struct();
 style.normalization = 'probability';
+style.prestretchXLim = options.prestretchXLim;
+if isempty(style.prestretchXLim), style.prestretchXLim = [0 1.05*maxLambda]; end
+style.prestretchEdges = linspace(style.prestretchXLim(1),style.prestretchXLim(2),options.prestretchBins+1);
+style.prestretchYLim = options.prestretchYLim;
+if isempty(style.prestretchYLim)
+    peakLambda = 0;
+    for k = 1:count
+        s = getSnapshot(source,files,dumpDir,k);
+        lambda = networkDumpPrestretch(s);
+        if ~isempty(lambda)
+            peakLambda = max([peakLambda,histcounts(lambda,style.prestretchEdges)/numel(lambda)]);
+        end
+    end
+    style.prestretchYLim = [0 max(.05,ceil(110*peakLambda)/100)];
+end
 style.kuhnXLim = options.kuhnXLim;
 if isempty(style.kuhnXLim), style.kuhnXLim = [0 ceil(maxN)+1]; end
 style.endToEndXLim = options.endToEndXLim;

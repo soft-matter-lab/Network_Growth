@@ -24,8 +24,14 @@ if isempty(options.histogramStyle)
     options.histogramStyle = networkDumpHistogramStyle(source,options);
 end
 style = options.histogramStyle;
-fig = figure('Color','w','Visible',options.visible,'Position',[100 100 1100 750]);
-layout = tiledlayout(fig,2,2,'TileSpacing','compact');
+% Styles saved before prestretch was added remain usable.
+lambdaFields = {'prestretchEdges','prestretchXLim','prestretchYLim'};
+if ~all(isfield(style,lambdaFields))
+    extra = networkDumpHistogramStyle(s,options);
+    for k = 1:numel(lambdaFields), style.(lambdaFields{k}) = extra.(lambdaFields{k}); end
+end
+fig = figure('Color','w','Visible',options.visible,'Position',[100 100 1400 800]);
+layout = tiledlayout(fig,2,3,'TileSpacing','compact');
 ax = nexttile(layout,1); rdf = [];
 if isfield(s,'nodes')
     hold(ax,'on');
@@ -112,6 +118,28 @@ else
         'Units','normalized','HorizontalAlignment','center'); axis(ax,'off');
 end
 ax.Tag = 'displacementHistogram';
+ax = nexttile(layout,5,[1 2]);
+[lambda,available] = networkDumpPrestretch(s);
+if available
+    fraction = zeros(1,numel(style.prestretchEdges)-1);
+    if ~isempty(lambda)
+        fraction = histcounts(lambda,style.prestretchEdges)/numel(lambda);
+    end
+    histogram(ax,'BinEdges',style.prestretchEdges,'BinCounts',fraction, ...
+        'Normalization','count','FaceColor',[.25 .45 .65]);
+    title(ax,sprintf('Bond prestretch (N = %d)',numel(lambda)));
+    if isempty(lambda)
+        text(ax,.5,.5,'No valid completed-bond samples','Units','normalized','HorizontalAlignment','center');
+    end
+else
+    title(ax,'Bond prestretch');
+    text(ax,.5,.5,'Bond lengths or contour lengths unavailable', ...
+        'Units','normalized','HorizontalAlignment','center');
+end
+xlabel(ax,'\lambda = r / (n b)'); ylabel(ax,'probability per bin'); grid(ax,'on');
+xlim(ax,style.prestretchXLim); ylim(ax,style.prestretchYLim);
+xline(ax,1,':','\lambda = 1','LabelVerticalAlignment','middle','HandleVisibility','off');
+ax.Tag = 'prestretchHistogram';
 title(layout,sprintf('A usage %.3g%% | event %d | t = %.5g | %s', ...
     s.usagePercent,s.event,s.ssaTime,s.phase),'Interpreter','none');
 if ~isempty(options.outputFile), exportgraphics(fig,options.outputFile,'Resolution',180); end

@@ -15,6 +15,9 @@ end
 defaults = defaultNetworkAConfig();
 cfg = mergeConfig(defaults, cfg);
 requestedConfig = cfg; % preserve nominal feed for reproducible replays
+if cfg.saveLammps && isempty(cfg.outputDir)
+    error('NetworkGrowth:LammpsOutputDir', 'Set outputDir when saveLammps is true.');
+end
 cfgNom = cfg;
 cfgNom.NtotalScale = 1;
 NtotalNom = resolveNtotal(cfgNom);      % nominal count (no scale), used for rEq in 'fill' mode
@@ -345,8 +348,13 @@ else
     fprintf('\n');
 end
 
+lammps = struct('status','disabled');
+if cfg.saveLammps
+    lammps = writeLammpsNetwork(nodes, bonds, activeEnds, cfg);
+end
+
 if cfg.saveData
-    save(dataPath, 'nodes', 'bonds', 'activeEnds', 'history', 't', 'nA', 'nB', 'cfg');
+    save(dataPath, 'nodes', 'bonds', 'activeEnds', 'history', 't', 'nA', 'nB', 'cfg', 'lammps');
 end
 
 if cfg.showLivePlot
@@ -390,6 +398,7 @@ results.stopReason = stopReason;
 results.requestedConfig = requestedConfig;
 results.dumpDir = dumpState.directory;
 results.nDumps = dumpState.count;
+results.lammps = lammps;
 results.dataFile = dataPath;
 if recording
     results.videoFile = [videoPathBase '.mp4'];
