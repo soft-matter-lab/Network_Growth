@@ -17,10 +17,14 @@ baseCfg.b = 1.6;
 baseCfg.kT = 4.14;
 baseCfg.chainModel = 'gaussian';
 
-baseCfg.kEndEnd = 1;
+baseCfg.allowSelfLoops = false;     % true enables dangling-to-bare-arm and two-dangling self-loops
+baseCfg.kSelfLoop = 0.01;           % independent loop multiplier on kChem; 0 disables loops
+baseCfg.selfLoopDistanceFactor = 1; % d_eff = factor*b*sqrt(n1+n2), only in the reaction weight
+
+baseCfg.kEndEnd = 1;                % end-joining multiplier for DIFFERENT anchors
 
 baseCfg.minKuhnCrosslink = 2;
-baseCfg.minKuhnEndEnd = 1;        % resulting joined chain has n >= 4
+baseCfg.minKuhnEndEnd = 1;        % resulting joined chain has n1+n2 >= 2*minKuhnEndEnd
 
 baseCfg.nucleation = false;
 baseCfg.kNuc = .001;

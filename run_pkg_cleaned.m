@@ -23,7 +23,7 @@ cfg.fB = 2;            % linker functionality (kept as metadata)
 cfg.b = 1.6;
 cfg.kT = 4.14;
 cfg.chainModel = 'cohen';       % 'cohen' (Langevin/Cohoen) or 'gaussian'
-cfg.kEndEnd = 1;               % end-end (cloud-cloud) rate multiplier on kChem; 1 = same as growth
+cfg.kEndEnd = 1;               % end-joining rate multiplier on kChem for DIFFERENT anchors
 
 cfg.minKuhnCrosslink = 6;       % min Kuhn segments before termination on a crosslinker
 cfg.minKuhnEndEnd = 3;          % end-end joining requires n1+n2 >= 2*minKuhnEndEnd (new chain >= 6)
@@ -43,7 +43,9 @@ cfg.eqIntegrator = 'damped2nd'; % 'damped2nd' or 'overdamped'
 cfg.massEq = 1;
 cfg.gammaEq = 0.5;
 
-cfg.allowSelfLoops = false;
+cfg.allowSelfLoops = false;     % true enables dangling-to-bare-arm and two-dangling self-loops
+cfg.kSelfLoop = 0.01;           % independent loop multiplier on kChem; 0 disables loops
+cfg.selfLoopDistanceFactor = 1; % d_eff = factor*b*sqrt(n1+n2), only in the reaction weight
 
 cfg.showLivePlot = true;
 cfg.makeVideo = true;

@@ -14,6 +14,9 @@ end
 
 defaults = defaultNetworkAConfig();
 cfg = mergeConfig(defaults, cfg);
+validateattributes(cfg.allowSelfLoops,{'logical','numeric'},{'scalar','binary'});
+validateattributes(cfg.kSelfLoop,{'numeric'},{'scalar','real','finite','nonnegative'});
+validateattributes(cfg.selfLoopDistanceFactor,{'numeric'},{'scalar','real','finite','nonnegative'});
 requestedConfig = cfg; % preserve nominal feed for reproducible replays
 if cfg.saveLammps && isempty(cfg.outputDir)
     error('NetworkGrowth:LammpsOutputDir', 'Set outputDir when saveLammps is true.');
@@ -133,41 +136,7 @@ while true
         end
     end
 
-    if M >= 2
-        adjNow = makeAdjacency(bonds, size(nodes,1));
-        for e = 1:M-1
-            p1 = activeEnds(e,3);
-            n1 = activeEnds(e,4);
-            for o = e+1:M
-                p2 = activeEnds(o,3);
-                n2 = activeEnds(o,4);
-
-                if adjNow(p1,p2)
-                    continue;
-                end
-                if p1 == p2 && ~cfg.allowSelfLoops
-                    continue;
-                end
-                if n1 + n2 < 2 * cfg.minKuhnEndEnd
-                    continue;
-                end
-
-                nTot = n1 + n2;
-                if p1 == p2
-                    d2 = 0;
-                else
-                    dv = nodes(p2,1:2) - nodes(p1,1:2);
-                    dv = dv - cfg.L * round(dv / cfg.L);
-                    d2 = sum(dv.^2);
-                end
-
-                wEndEnd = cfg.kEndEnd * cfg.kChem / (pi * nTot * cfg.b^2) * exp(-d2 / (nTot * cfg.b^2));
-                if wEndEnd > 1e-14
-                    R(end+1,:) = [3, e, o, wEndEnd];
-                end
-            end
-        end
-    end
+    R = [R;buildEndJoiningEvents(nodes,bonds,activeEnds,cfg)];
 
     if canNucleate
         R(end+1,:) = [4, 0, 0, cfg.kNuc * nA * nB / Abox];
@@ -243,6 +212,8 @@ while true
             no = activeEnds(o,4);
 
             if p == q
+                % Both loop modes consume two distinct active arms at this
+                % anchor. d_eff is a rate penalty, not a geometric loop length.
                 img = [0, 0];
             else
                 img = -round((nodes(q,1:2) - nodes(p,1:2)) / cfg.L);

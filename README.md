@@ -53,6 +53,60 @@ jammed state; inspect `stopReason` and `usagePercent`. Failed runs retain their
 completed snapshots and an error report. `sweep.continueOnError` controls whether
 later runs proceed after a MATLAB error. Results are not accumulated in memory.
 
+## Self-loop kinetics
+
+Both run drivers expose `allowSelfLoops`, `kSelfLoop`, and
+`selfLoopDistanceFactor` (`cfg` for single runs, `baseCfg` for sweeps):
+
+```matlab
+cfg.allowSelfLoops = true;       % false disables both mechanisms
+cfg.kSelfLoop = 0.01;            % independent multiplier on kChem
+cfg.selfLoopDistanceFactor = 1;  % alpha in d_eff = alpha*b*sqrt(n1+n2)
+```
+
+The library and drivers keep `allowSelfLoops = false` until enabled.
+Two same-anchor active ends can close through either mechanism:
+
+| Mechanism | Reactants | Completed loop Kuhn count |
+| --- | --- | --- |
+| Dangling chain returns to its anchor | One growing end with n>0 plus a spare bare arm with n=0 | n |
+| Two dangling chains join on their common anchor | Two growing ends with n1>0 and n2>0 | n1+n2 |
+
+A return to an anchor requires a **spare reactive arm**; it cannot react with
+an already occupied attachment site. Each event consumes two active arms,
+adds one `[p,p,n1+n2,0,0]` bond, and adds two to the anchor's degree. It consumes
+no free crosslinker or background monomer. The existing eligibility threshold
+is `n1+n2 >= 2*minKuhnEndEnd`, with positive total length. Bare-to-bare closure
+is excluded. The existing no-duplicate-bond rule permits at most one self-loop
+per anchor. Distinct eligible arm pairs each have their own propensity and
+are enumerated once; there is no extra functionality multiplier.
+
+For a self-loop the reaction kernel uses a **rate-only effective distance**:
+
+```text
+nTotal = n1+n2
+d_eff = selfLoopDistanceFactor * b * sqrt(nTotal)
+w_loop = kSelfLoop * kChem / (pi*nTotal*b^2)
+         * exp(-d_eff^2/(nTotal*b^2))
+       = kSelfLoop * kChem / (pi*nTotal*b^2)
+         * exp(-selfLoopDistanceFactor^2)
+```
+
+For one dangling chain this gives `d_eff = b*sqrt(n)` at the default factor 1;
+for two dangling chains it gives `b*sqrt(n1+n2)`. This is a deliberate kinetic
+suppression, not a measured tip separation or a new physical bond length.
+The completed self-loop still has coincident endpoints and zero end-to-end
+length. With factor 1, the added suppression is `exp(-1)` for both mechanisms;
+it introduces no further chain-length dependence beyond the existing `1/nTotal`.
+
+`kSelfLoop` replaces `kEndEnd` for same-anchor events, so changing `kEndEnd`
+affects joining between different anchors only. Setting `kSelfLoop = 0`
+disables loops. To reproduce the old zero-distance loop rate, enable loops,
+set `selfLoopDistanceFactor = 0`, and set `kSelfLoop` equal to the old `kEndEnd`.
+Both mechanisms remain history event type 3. Completed loops still count
+toward chain-bound material and the exported density radius, and are omitted
+from physical LAMMPS bonds.
+
 ## LAMMPS export
 
 Both `run_pkg_cleaned.m` and `run_pkg_cleaned_sweeps.m` enable

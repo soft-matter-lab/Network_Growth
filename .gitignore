@@ -24,6 +24,7 @@ tests/*
 !tests/testLammpsIngredientsBuilder.m
 !tests/testNetworkPrestretch.m
 !tests/testNetworkDumpVisualization.m
+!tests/testSelfLoopKinetics.m
 runs_pkg_cleaned/
 replicate_averages/
 SESSION_NOTES.md

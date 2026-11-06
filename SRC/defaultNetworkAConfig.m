@@ -12,7 +12,7 @@ cfg.xA = 0.10;
 cfg.fA = 3;
 cfg.fB = 2;
 cfg.kChem = 1;
-cfg.kEndEnd = 1;              % multiplier on kChem for end-end (chain-chain / cloud-cloud) bonding
+cfg.kEndEnd = 1;              % multiplier on kChem for end joining between DIFFERENT anchors
 % Nucleation: a free crosslinker is placed as a new, initially disconnected
 % cluster (fA bare arms). Rate = kNuc * nA * nB / Abox  (= kNuc*C_A*C_B*Abox).
 cfg.minKuhnCrosslink = 1;        % min Kuhn segments before a growing end can bond to a free crosslinker
@@ -23,6 +23,8 @@ cfg.kNuc = 0.01;              % nucleation rate constant (relative to kChem)
 cfg.nucAvoidOccupied = true;  % bias new nuclei toward empty regions
 cfg.nucCandidates = 20;       % random sites tried; the one farthest from existing junctions wins
 cfg.allowSelfLoops = false;   % false: a crosslinker cannot bond two of its own arms together
+cfg.kSelfLoop = 0.01;         % independent multiplier on kChem for BOTH same-anchor loop modes
+cfg.selfLoopDistanceFactor = 1; % rate-only d_eff = factor*b*sqrt(n1+n2); 0 restores zero-distance kernel
 
 % Mechanics
 cfg.b = 5;
