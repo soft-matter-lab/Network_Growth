@@ -5,6 +5,20 @@ function [fig, result] = averageNetworkDumps(runDirs, options)
 % Returns three figures (number fraction, weight fraction, end-to-end distance),
 % each with one column per usage target. outputFile is a base name; exports add suffixes.
 if nargin < 2, options = struct(); end
+% Mixtures of prescribed lengths do not use a Flory growth distribution.
+% Choose route-aware defaults even for direct calls without a driver.
+if ~isempty(runDirs)
+    folders = cellstr(runDirs);
+    [~,firstMetadata] = listNetworkDumpFiles(folders{1});
+    firstCfg = struct();
+    if isfield(firstMetadata,'requestedConfig'), firstCfg = firstMetadata.requestedConfig;
+    elseif isfield(firstMetadata,'config'), firstCfg = firstMetadata.config; end
+    if isfield(firstCfg,'growthMode') && strcmp(firstCfg.growthMode,'preformed')
+        if ~isfield(options,'fitFlory'), options.fitFlory = false; end
+        if ~isfield(options,'fitFloryWeight'), options.fitFloryWeight = false; end
+        if ~isfield(options,'showWeightFromNumberFit'), options.showWeightFromNumberFit = false; end
+    end
+end
 options = mergeConfig(struct('usagePercent',[25 50 100],'nBinWidth',1, ...
     'distanceBins',30,'showSpread',true,'requireAllReplicates',true, ...
     'visible','on','outputFile','','kuhnYLim',[],'weightYLim',[], ...
@@ -318,6 +332,7 @@ end
 
 function physics = physicsConfig(cfg)
 % Compare every non-output setting, including chemistry and relaxation settings.
+if ~isfield(cfg,'growthMode'), cfg.growthMode = 'growing'; end % legacy snapshots
 names = fieldnames(cfg);
 output = startsWith(names,{'dump','save','show','video','output','data','plot','eqPlot','heatGrid','lammps'});
 output = output | ismember(names,{'randSeed','makeVideo'});

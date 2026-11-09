@@ -3,7 +3,7 @@ function [summary, batchDir] = runNetworkSweep(baseCfg, sweep, outputRoot)
 % Inspect makeNetworkSweepPlan(baseCfg,sweep) before launching a large batch.
 if nargin < 2, sweep = struct(); end
 if nargin < 3, outputRoot = fullfile(pwd,'batch_runs_pkg_cleaned_sweeps'); end
-baseCfg = mergeConfig(defaultNetworkAConfig(),baseCfg);
+baseCfg = resolveNetworkConfig(baseCfg);
 [plan,sweep] = makeNetworkSweepPlan(baseCfg,sweep);
 [batchDir,~] = createUniqueRunFolder(outputRoot,sweep.mode);
 save(fullfile(batchDir,'batch_config.mat'),'baseCfg','sweep','plan');
@@ -19,10 +19,20 @@ summary.lammpsRepulsiveRadius = nan(nRuns,1);
 names = {'nNodes','nBonds','nActiveEnds','freeCrosslinkers','freeMonomers', ...
     'usagePercent','ssaEvents','ssaTime','runtimeSeconds','nDumps','rEq'};
 for j = 1:numel(names), summary.(names{j}) = nan(nRuns,1); end
+if strcmp(baseCfg.growthMode,'preformed')
+    summary.freeChains = nan(nRuns,1);
+    summary.freeKuhnSegments = nan(nRuns,1);
+    summary.capturedChainPercent = nan(nRuns,1);
+    summary.completedChainPercent = nan(nRuns,1);
+    for s = 1:3, summary.(sprintf('freeChainCount%d',s)) = nan(nRuns,1); end
+end
 saveSummary(summary,batchDir);
 fprintf('Batch folder: %s\n',batchDir);
 for k = 1:nRuns
     cfg = baseCfg;
+    if ~isempty(sweep.parameterSets)
+        cfg = mergeConfig(cfg,sweep.parameterSets{plan.parameterSetIndex(k)});
+    end
     cfg.xA = plan.xA(k); cfg.randSeed = plan.randSeed(k);
     cfg.NtotalScale = plan.NtotalScale(k);
     % Keep cfg.Ntotal nominal/unresolved: fill-mode rEq must not use scaled feed.
@@ -35,13 +45,23 @@ for k = 1:nRuns
     saveSummary(summary,batchDir);
     fprintf('\n=== SWEEP RUN %d/%d: xA = %g, seed = %d ===\n',k,nRuns,cfg.xA,cfg.randSeed);
     try
-        results = runNetworkA_cleaned(cfg);
+        results = runNetwork_cleaned(cfg);
         if sweep.saveResults, save(fullfile(runDir,'results_struct.mat'),'results'); end
         summary.nNodes(k) = size(results.nodes,1);
         summary.nBonds(k) = size(results.bonds,1);
         summary.nActiveEnds(k) = size(results.activeEnds,1);
         summary.freeCrosslinkers(k) = results.nA;
         summary.freeMonomers(k) = results.nB;
+        if strcmp(cfg.growthMode,'preformed')
+            summary.freeMonomers(k) = 0;
+            summary.freeKuhnSegments(k) = results.nB;
+            summary.freeChains(k) = sum(results.preformed.freeChainCounts);
+            summary.capturedChainPercent(k) = results.preformed.capturedPercent;
+            summary.completedChainPercent(k) = results.preformed.completedPercent;
+            for s = 1:numel(results.preformed.freeChainCounts)
+                summary.(sprintf('freeChainCount%d',s))(k) = results.preformed.freeChainCounts(s);
+            end
+        end
         freeA0 = plan.initialCrosslinkers(k)-1;
         if freeA0 > 0, summary.usagePercent(k) = 100*(freeA0-results.nA)/freeA0; end
         summary.ssaEvents(k) = size(results.history,1);

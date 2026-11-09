@@ -1,20 +1,134 @@
 # Network Growth
 
-MATLAB Case-A stochastic network growth with periodic boundaries. Add `SRC` to
+MATLAB stochastic network growth with periodic boundaries: growing chains
+(Case A) or end-linking preformed chains (Case B). Add the single shared `SRC` to
 the MATLAB path, or use the drivers which do this automatically.
 
-## Drivers
+## Driver folders and shared source
 
-- `run_pkg_cleaned.m`: one realization; progress dumps are enabled.
-- `run_pkg_cleaned_sweeps.m`: new batch driver with explicit seed/composition modes.
-- `run_pkg_cleaned_batch.m`: older custom-override driver, retained separately.
-- `visualize_pkg_cleaned.m`: offline driver; point it at saved dumps to export a
-  network movie and distribution figures without running the simulation.
-- `build_lammps_ingredients.m`: offline driver; point it at an older simulation
-  folder to build LAMMPS data and tables from its saved final state.
+There is **one package and one `SRC` folder**. The two driver folders contain
+editable settings and entry scripts only:
 
-Edit the new driver's settings before running it. Its default plan is 15 runs:
-five compositions, repeated for three seeds, at fixed `fA = 4`.
+| Task | `drivers/growing_chains/` | `drivers/preformed_chains/` |
+| --- | --- | --- |
+| Single run | `run_single_growing.m` | `run_single_preformed.m` |
+| Sweep / replicates | `run_sweep_growing.m` | `run_sweep_preformed.m` |
+| Saved-state visualizer / video / prestretch | `visualize_growing.m` | `visualize_preformed.m` |
+| Replicate distributions | `average_growing.m` | `average_preformed.m` |
+| Offline LAMMPS builder | `build_lammps_growing.m` | `build_lammps_preformed.m` |
+
+All ten drivers find `SRC` relative to their own location. New driver output
+paths are anchored to the project root, independent of MATLAB's current folder.
+Case A uses `runs_pkg_cleaned` / `batch_runs_pkg_cleaned_sweeps`; Case B uses
+`runs_preformed` / `batch_runs_preformed`. Each sample has its own folder.
+The five legacy root scripts are archived unchanged under
+`tmp/legacy_root_drivers_20261109/` for reference to their old settings.
+Use the drivers above; the archived scripts retain their old root-relative paths.
+
+`runNetwork_cleaned` shares scheduling, mechanics, bookkeeping and output.
+`buildGrowingChainEvents` and `buildPreformedChainEvents` implement separate
+chemistries. `runNetworkA_cleaned` and `runNetworkB_cleaned` are route wrappers;
+`runNetworkSweep` dispatches from `cfg.growthMode`.
+
+## Preformed chains (Case B)
+
+```matlab
+cfg = defaultNetworkBConfig();
+cfg.chainLengths = [20 60 120];
+cfg.chainNumberFractions = [.5 .3 .2]; % fractions of chains, not Kuhn segments
+cfg.chainCounts = [];                % optional exact count per species
+cfg.fA = 4;
+cfg.kAddition = 1;                   % area/time, includes both chain ends
+cfg.kChem = 1;                       % fresh-crosslinker rate constant
+cfg.kEndEnd = 1;                     % existing-junction multiplier on kChem
+cfg.allowSelfLoops = false;
+cfg.kSelfLoop = .01;
+cfg.selfLoopDistanceFactor = 1;
+```
+
+Supply one to three distinct positive integer lengths. Number fractions must
+be nonnegative and sum to one. The meaning of `xA` is unchanged:
+`NA = round(xA*Ntotal)` and the Kuhn budget is `Ntotal-NA`. With number fractions
+`f`, ideal counts are `budget*f/sum(f.*chainLengths)`. Counts are rounded down,
+then at most one chain per species is added in descending fractional-remainder
+order when it fits the remaining budget. This does not guarantee exact budget
+filling or exact requested fractions. Both actual counts/fractions and unused
+budget are reported. The unused rounding budget is not a free-monomer reservoir
+and does not enter mechanics or LAMMPS material counts.
+
+If `chainCounts` is supplied, it overrides number fractions and must fit the
+Kuhn budget. `resolvePreformedFeed(cfg)` previews counts and the stoichiometric
+ratio `2*sum(chainCounts)/(fA*NA)`, including the seed in NA. Ratio one means
+balanced initial functional groups, not guaranteed complete conversion.
+
+Only three event types occur:
+
+1. A bare arm captures a whole chain of species s with rate
+   `kAddition*freeChainCounts(s)/L^2`. Summing the q bare arms at a junction gives
+   `kAddition*q*C_P,s`. There is no extra factor of two. The chain becomes a
+   dangling chain of length N_s; its reservoir count decreases by one.
+2. A dangling chain captures a fresh crosslinker with rate `fA*kChem*nA/L^2`.
+   Placement samples the same 2D Gaussian cloud as the existing-node kernel:
+   `r = b*sqrt(N_s)*sqrt(-log(U))`, uniform polar angle. Thus RMS radius is
+   `b*sqrt(N_s)` (not the mean radius, nor a fixed sampled bond distance).
+3. A dangling chain terminates on a bare arm of an existing junction with rate
+   `kEndEnd*kChem/(pi*N_s*b^2)*exp(-r^2/(N_s*b^2))` per arm, using the periodic
+   minimum-image anchor distance. A self-loop uses `kSelfLoop` in place of
+   `kEndEnd` and `r_eff = selfLoopDistanceFactor*b*sqrt(N_s)` in this rate only.
+
+No segment growth, two-dangling joining, or independent nucleation occurs.
+Case A's minimum-growth thresholds do not apply to these already formed
+chains. Every dangling/completed chain retains one prescribed length. Geometry
+can relax while each species' cloud width remains constant. A self-loop needs
+a spare bare arm on its own anchor. Both routes permit at most one self-loop
+per junction and one strand per distinct junction pair. Junction functionality
+counts completed bonds (self-loops twice), dangling attachments and bare arms.
+
+`NtotalScale` increases computed feed. Fill-mode repulsion continues to use
+nominal unscaled crosslinker count; an explicit `Ntotal` still ignores scale.
+Feed-mode repulsion uses the actual allocated Kuhn count. LAMMPS export uses
+incorporated Kuhn segments (completed, self-loop, dangling), divided by formed
+crosslinkers. Free chains and unused budget are excluded. Only distinct-node
+completed strands become LAMMPS physical bonds, with their own N_s.
+
+Case B saves the existing geometry arrays plus `preformed` reservoir and
+conversion records. In `results.nB` and history column 6, B denotes free Kuhn
+segments in whole supplied chains. Version-2 dumps explicitly store
+`freeKuhnSegments`, `freeMonomers=0`, and per-species free/dangling/completed
+counts; metadata records the event and history definitions. `chainCountHistory`
+contains the initial reservoir followed by one row per reaction. Old Case A
+dumps remain readable. All default usage milestones still measure consumption
+of initially free crosslinkers, excluding the seed; they do not mean chain
+capture or chain completion. Event-interval dumps also capture subsequent
+changes after crosslinker depletion.
+
+The Case B visualizer adds `preformed_progress.png/.csv`: remaining chains and
+captured/completed conversion by species. Captured means one or both ends are
+attached; completed includes self-loops. Number/weight distributions and
+prestretch use the shared plotting functions. Flory fits default off for Case B.
+
+Sweeps support the same seed/composition modes plus explicit parameter sets:
+
+```matlab
+sweep.parameterSets = {
+    struct('chainLengths',20,'chainNumberFractions',1,'chainCounts',[],'fA',4)
+    struct('chainLengths',[20 60],'chainNumberFractions',[.7 .3],'chainCounts',[],'fA',4)
+};
+```
+
+Each set is crossed with the selected compositions and seeds. An empty cell
+array uses `baseCfg` alone. Plans record per-species lengths/counts, budget
+remainder and end/arm ratio; summaries record remaining species and conversion.
+Select one `parameterSetIndex` and xA when averaging replicates; differing
+physical settings are rejected by the shared averaging function.
+
+## Common sweep options
+
+Use `drivers/growing_chains/run_sweep_growing.m` or
+`drivers/preformed_chains/run_sweep_preformed.m` for the selected synthesis route.
+
+Edit a driver's settings before running it. Preview the generated plan to see
+the exact number of runs and resolved feed for your selected settings.
 
 ```matlab
 sweep.mode = 'replicates';             % fixed baseCfg.xA, every seed
@@ -53,9 +167,9 @@ jammed state; inspect `stopReason` and `usagePercent`. Failed runs retain their
 completed snapshots and an error report. `sweep.continueOnError` controls whether
 later runs proceed after a MATLAB error. Results are not accumulated in memory.
 
-## Self-loop kinetics
+## Self-loop kinetics (Case A)
 
-Both run drivers expose `allowSelfLoops`, `kSelfLoop`, and
+The growing-chain single and sweep drivers expose `allowSelfLoops`, `kSelfLoop`, and
 `selfLoopDistanceFactor` (`cfg` for single runs, `baseCfg` for sweeps):
 
 ```matlab
@@ -109,7 +223,7 @@ from physical LAMMPS bonds.
 
 ## LAMMPS export
 
-Both `run_pkg_cleaned.m` and `run_pkg_cleaned_sweeps.m` enable
+The single-run and sweep drivers in both mode folders enable
 `saveLammps = true`. After final relaxation, each sample folder receives:
 
 - `network.data`: LAMMPS data file with `Atoms # bpm/sphere` and `Bonds`.
@@ -190,7 +304,8 @@ a standard LAMMPS data file cannot encode independent per-bond image offsets.
 
 ### Build ingredients from an older saved simulation
 
-Run **`build_lammps_ingredients.m`** in the project root. Set `inputFolder`
+Run **`build_lammps_growing.m`** or **`build_lammps_preformed.m`** in the
+corresponding driver folder. Set `inputFolder`
 to one simulation folder (or its `dumps` subfolder), or leave it empty for a
 folder picker. The driver writes the three LAMMPS files directly into that
 simulation folder without rerunning growth or changing any saved input data.
@@ -307,7 +422,7 @@ PNG/CSV export; it is independent of dumps, `saveData`, and `showFinalHistogram`
 
 ## Offline visualization and analysis
 
-**Start with `visualize_pkg_cleaned.m`, next to the run drivers.** Set
+**Start with `visualize_growing.m` or `visualize_preformed.m` in the corresponding driver folder.** Set
 `inputFolder` to one run folder or its `dumps` subfolder, then run the script.
 Leaving it empty opens a folder picker. Choose an individual run inside a batch,
 not the batch's top-level directory.
@@ -486,7 +601,8 @@ positions; it is not a monomer RDF or a relaxation/convergence diagnostic.
 
 ## Replicate-averaged evolution plots
 
-Run `average_pkg_cleaned.m` beside the other drivers. Enter the replicate run
+Run `average_growing.m` or `average_preformed.m` in the corresponding driver
+folder. Enter the replicate run
 folders in `runFolders` (e.g. five runs with distinct seeds), or leave that list
 empty and set `batchFolder` and `selectedXA` to select a composition from a sweep.
 The averager checks that all non-output settings match and seeds are distinct.
@@ -548,7 +664,7 @@ distribution names, and their paths are returned in `data.outputFiles`.
 
 ### Flory number-fraction fits
 
-The main number-fraction plot has one model switch in `average_pkg_cleaned.m`:
+The growing-chain number-fraction plot has one model switch in `average_growing.m`:
 
 ```matlab
 averageOptions.floryModel = 'shifted'; % 'shifted' or 'original'

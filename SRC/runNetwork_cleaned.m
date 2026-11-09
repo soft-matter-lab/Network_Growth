@@ -1,0 +1,448 @@
+function results = runNetwork_cleaned(cfg)
+% Shared growth, relaxation and output engine for Case A and preformed Case B.
+%
+% Case-A behavior is preserved from NetworkA_single_v2.m:
+% - route-specific SSA construction, with shared execution and mechanics
+% - fresh-crosslinker placement: b*n^0.6 in A, b*sqrt(n) in B
+% - tensile-only bonded-chain spring
+% - harmonic pairwise repulsion (bonded pairs optional via cfg.repelBondedPairs)
+% - periodic image tracking on bonds
+
+if nargin < 1
+    cfg = struct();
+end
+
+cfg = resolveNetworkConfig(cfg);
+isPreformed = strcmp(cfg.growthMode,'preformed');
+validateattributes(cfg.allowSelfLoops,{'logical','numeric'},{'scalar','binary'});
+validateattributes(cfg.kSelfLoop,{'numeric'},{'scalar','real','finite','nonnegative'});
+validateattributes(cfg.selfLoopDistanceFactor,{'numeric'},{'scalar','real','finite','nonnegative'});
+requestedConfig = cfg; % preserve nominal feed for reproducible replays
+chainCounts = [];
+if isPreformed
+    validateattributes(cfg.kAddition,{'numeric'},{'scalar','real','finite','nonnegative'});
+    validateattributes(cfg.kChem,{'numeric'},{'scalar','real','finite','nonnegative'});
+    validateattributes(cfg.kEndEnd,{'numeric'},{'scalar','real','finite','nonnegative'});
+    validateattributes(cfg.L,{'numeric'},{'scalar','real','finite','positive'});
+    validateattributes(cfg.b,{'numeric'},{'scalar','real','finite','positive'});
+    if cfg.nucleation
+        error('NetworkGrowth:PreformedNucleation','Case B uses one seed and exactly three event types; set nucleation=false.');
+    end
+    cfg.preformedFeed = resolvePreformedFeed(cfg);
+    cfg.chainLengths = cfg.preformedFeed.chainLengths;
+    chainCounts = cfg.preformedFeed.initialChainCounts;
+    fprintf('Preformed feed: lengths %s, counts %s, unused Kuhn budget %d, end/arm ratio %.4g\n', ...
+        mat2str(cfg.chainLengths),mat2str(chainCounts),cfg.preformedFeed.unusedKuhnBudget, ...
+        cfg.preformedFeed.chainEndArmRatio);
+end
+if cfg.saveLammps && isempty(cfg.outputDir)
+    error('NetworkGrowth:LammpsOutputDir', 'Set outputDir when saveLammps is true.');
+end
+cfgNom = cfg;
+cfgNom.NtotalScale = 1;
+NtotalNom = resolveNtotal(cfgNom);      % nominal count (no scale), used for rEq in 'fill' mode
+cfg.Ntotal = resolveNtotal(cfg);
+
+if ~isempty(cfg.randSeed)
+    rng(cfg.randSeed, 'twister');
+end
+
+outputDir = '';
+if isfield(cfg, 'outputDir') && ~isempty(cfg.outputDir)
+    outputDir = cfg.outputDir;
+    if ~exist(outputDir, 'dir')
+        mkdir(outputDir);
+    end
+end
+dataPath = resolveOutputPath(cfg.dataFile, outputDir);
+videoPathBase = stripMp4Suffix(resolveOutputPath(cfg.videoName, outputDir));
+
+NA0 = round(cfg.xA * cfg.Ntotal);
+NB0 = cfg.Ntotal - NA0;
+if isPreformed, NB0 = cfg.preformedFeed.initialKuhnCount; end
+NA0nom = round(cfg.xA * NtotalNom);
+if NA0 < 1
+    error('NetworkGrowth:NoSeed', 'The feed must contain at least one crosslinker for the seed.');
+end
+
+if mod(cfg.fA * NA0, 2) ~= 0
+    warning(['fA*NA0 = %d is odd. Full saturation requires an even total number ' ...
+             'of crosslinker arms because every completed chain consumes two arms.'], ...
+             cfg.fA * NA0);
+end
+
+% Constant feed-based mean-field repulsion radius.
+nAvgFeed = NB0 / max(NA0, 1);
+switch lower(cfg.rEqMode)
+    case 'fill'
+        % NA0 discs of diameter rEq cover nodeAreaFraction of the box.
+        % Nominal (unscaled) crosslinker count, so NtotalScale does not change rEq.
+        rEq = 2 * cfg.L * sqrt(cfg.nodeAreaFraction / (pi * max(NA0nom, 1)));
+    otherwise
+        rEq = 0.5 * cfg.b * sqrt(nAvgFeed);
+end
+
+nA = NA0 - 1;
+nB = NB0;
+t = 0;
+
+seedPos = [cfg.L/2, cfg.L/2];
+if cfg.nucleation
+    seedPos = cfg.L * rand(1,2);
+end
+nodes = [seedPos, 0];                                % [x,y,degree]
+activeEnds = repmat([seedPos, 1, 0], cfg.fA, 1);     % [x,y,parent,n]
+bonds = zeros(0,5);                                  % [i,j,n,imgX,imgY]
+history = zeros(0,10);                               % [event,t,dt,type,nA,nB,nNodes,nBonds,nActive,eqIters]
+dumpState = initNetworkDumps(cfg, requestedConfig, NA0, NB0, rEq);
+dumpState = writeNetworkDump(dumpState, nodes, bonds, activeEnds, ...
+    0, t, nA, nB, 'initial', '', chainCounts);
+
+histT = 0;
+histA = nA;
+histB = nB;
+if isPreformed, histB = chainCounts; end
+chainCountHistory = chainCounts; % initial row, then one row per Case B event
+
+viz = [];
+if cfg.showLivePlot
+    viz = initVisualization(cfg, histT, histA, histB);
+    updateLivePlot(viz, nodes, bonds, activeEnds, cfg, histT, histA, histB);
+end
+
+recording = cfg.makeVideo && cfg.showLivePlot;
+if recording
+    vid = VideoWriter(videoPathBase, 'MPEG-4');
+    vid.FrameRate = cfg.videoFPS;
+    open(vid);
+    writeVideo(vid, getframe(viz.fig));
+end
+
+runtime = tic;
+
+eventID = 0;
+stopReason = 'no_active_ends';
+while true
+    eventID = eventID + 1;
+
+    canNucleate = cfg.nucleation && nA > 0 && nB > 0 && cfg.kNuc > 0;
+    if isempty(activeEnds) && ~canNucleate
+        break;
+    end
+
+    nodes(:,3) = computeDegrees(bonds, size(nodes,1));
+    expectedEnds = sum(cfg.fA - nodes(:,3));
+    if size(activeEnds,1) ~= expectedEnds
+        error('Active-end bookkeeping mismatch: have %d, expected %d.', size(activeEnds,1), expectedEnds);
+    end
+
+    M = size(activeEnds,1);
+    nBare = sum(activeEnds(:,4) == 0);
+    nGrowing = M - nBare;
+    if isPreformed
+        R = buildPreformedChainEvents(nodes,bonds,activeEnds,nA,chainCounts,cfg);
+    else
+        R = buildGrowingChainEvents(nodes,bonds,activeEnds,nA,nB,cfg);
+    end
+
+    if isempty(R)
+        stopReason = 'no_allowed_events';
+        degNow = computeDegrees(bonds, size(nodes,1));
+        fprintf('\nSSA JAMMED at t = %.6g\n', t);
+        fprintf('Free crosslinkers = %d, reservoir Kuhn segments = %d, active ends = %d\n', nA, nB, M);
+        fprintf('Bare crosslinker arms (n=0) = %d, dangling chain ends (n>0) = %d\n', nBare, nGrowing);
+        fprintf('Degree counts:');
+        for dd = 0:cfg.fA
+            fprintf(' d%d=%d', dd, sum(degNow == dd));
+        end
+        fprintf('\n');
+        break;
+    end
+
+    w = R(:,4);
+    a0 = sum(w);
+    dtRxn = -log(max(rand, realmin)) / a0;
+    t = t + dtRxn;
+
+    pick = find(cumsum(w) >= rand * sum(w), 1, 'first');
+    type = R(pick,1);
+    e = R(pick,2);
+    o = R(pick,3);
+
+    p = 0;
+    n = 0;
+    if type ~= 4
+        p = activeEnds(e,3);
+        n = activeEnds(e,4);
+    end
+    newBond = false;
+
+    switch type
+        case 4
+            sitePos = nucleationSite(nodes, cfg);
+            q = size(nodes,1) + 1;
+            nodes(q,:) = [sitePos, 0];
+            activeEnds(end+1:end+cfg.fA,:) = repmat([sitePos, q, 0], cfg.fA, 1);
+            nA = nA - 1;
+
+        case 1
+            if isPreformed
+                activeEnds(e,4) = cfg.chainLengths(o);
+                chainCounts(o) = chainCounts(o)-1;
+                nB = nB-cfg.chainLengths(o);
+            else
+                activeEnds(e,4) = n + 1;
+                nB = nB - 1;
+            end
+
+        case 2
+            nChain = n;
+            r0 = cfg.b * nChain^0.6;
+            if isPreformed, r0 = cfg.b*sqrt(nChain); end
+            r = r0 * sqrt(-log(max(rand, realmin)));
+            theta = 2 * pi * rand;
+            newPos = nodes(p,1:2) + r * [cos(theta), sin(theta)];
+
+            q = size(nodes,1) + 1;
+            nodes(q,:) = [newPos, 1];
+            bonds(end+1,:) = [p, q, nChain, 0, 0];
+            nodes(p,3) = nodes(p,3) + 1;
+
+            newPosWrap = wrapPoint(newPos, cfg.L);
+            activeEnds(e,:) = [newPosWrap, q, 0];
+            if cfg.fA > 2
+                activeEnds(end+1:end+(cfg.fA-2),:) = repmat([newPosWrap, q, 0], cfg.fA-2, 1);
+            end
+
+            nA = nA - 1;
+            newBond = true;
+
+        case 3
+            q = activeEnds(o,3);
+            no = activeEnds(o,4);
+
+            if p == q
+                % Both loop modes consume two distinct active arms at this
+                % anchor. d_eff is a rate penalty, not a geometric loop length.
+                img = [0, 0];
+            else
+                img = -round((nodes(q,1:2) - nodes(p,1:2)) / cfg.L);
+            end
+            bonds(end+1,:) = [p, q, n + no, img];
+            nodes(p,3) = nodes(p,3) + 1;
+            nodes(q,3) = nodes(q,3) + 1;
+
+            rm = sort([e, o], 'descend');
+            activeEnds(rm(1),:) = [];
+            activeEnds(rm(2),:) = [];
+            newBond = true;
+    end
+
+    nodes(:,3) = computeDegrees(bonds, size(nodes,1));
+    validateNetworkState(nodes, bonds, activeEnds, cfg.fA, cfg.nucleation);
+    if isPreformed
+        preformedChainState(chainCounts,nodes,bonds,activeEnds,cfg);
+    end
+
+    if cfg.showLivePlot
+        drawMotion(nodes, bonds, cfg.L, activeEnds, viz, cfg.fA, cfg.b);
+        drawnow;
+    end
+
+    eqIters = 0;
+    rmsSpeed = 0;
+    if newBond
+        [nodes, rmsSpeed, eqIters] = equilibrateNetwork( ...
+            nodes, bonds, activeEnds, cfg, rEq, viz);
+
+        if eqIters >= cfg.maxEq
+            warning('Event %d: equilibration hit step cap (%d), RMS|v|=%.3e not yet below tolV.', ...
+                eventID, cfg.maxEq, rmsSpeed);
+        end
+
+        if ~isempty(activeEnds)
+            parent = activeEnds(:,3);
+            activeEnds(:,1:2) = wrapPoint(nodes(parent,1:2), cfg.L);
+        end
+        validateNetworkState(nodes, bonds, activeEnds, cfg.fA, cfg.nucleation);
+    end
+
+    history(end+1,:) = [eventID, t, dtRxn, type, nA, nB, size(nodes,1), size(bonds,1), size(activeEnds,1), eqIters];
+    histT(end+1) = t;
+    histA(end+1) = nA;
+    if isPreformed
+        histB(end+1,:) = chainCounts;
+        chainCountHistory(end+1,:) = chainCounts;
+    else
+        histB(end+1) = nB;
+    end
+
+    dumpState = writeNetworkDump(dumpState, nodes, bonds, activeEnds, ...
+        eventID, t, nA, nB, 'event', '', chainCounts);
+
+    if cfg.showLivePlot && mod(eventID, cfg.plotEvery) == 0
+        updateLivePlot(viz, nodes, bonds, activeEnds, cfg, histT, histA, histB);
+        drawnow;
+        if recording
+            writeVideo(vid, getframe(viz.fig));
+        end
+    end
+end
+
+if ~isempty(bonds)
+    [nodes, rmsSpeedF, itFinal] = equilibrateNetwork( ...
+        nodes, bonds, activeEnds, localFinalCfg(cfg), rEq, viz);
+else
+    rmsSpeedF = 0;
+    itFinal = 0;
+end
+
+if ~isempty(activeEnds)
+    parent = activeEnds(:,3);
+    activeEnds(:,1:2) = wrapPoint(nodes(parent,1:2), cfg.L);
+end
+
+nodes(:,3) = computeDegrees(bonds, size(nodes,1));
+unsat = find(nodes(:,3) < cfg.fA);
+dumpState = writeNetworkDump(dumpState, nodes, bonds, activeEnds, ...
+    size(history,1), t, nA, nB, 'final', stopReason, chainCounts);
+preformed = struct();
+if isPreformed, preformed = preformedChainState(chainCounts,nodes,bonds,activeEnds,cfg); end
+elapsed = toc(runtime);
+
+fprintf('\n=== FINAL STATE ===\n');
+fprintf('SSA events: %d   SSA time: %.6g   runtime: %.2f s\n', size(history,1), t, elapsed);
+fprintf('Junctions: %d   Chains: %d\n', size(nodes,1), size(bonds,1));
+fprintf('Free crosslinkers: %d   Reservoir Kuhn segments: %d   Active ends: %d\n', nA, nB, size(activeEnds,1));
+if isPreformed
+    fprintf('Free chains by species: %s; captured %.3g%%, completed %.3g%%\n', ...
+        mat2str(chainCounts),preformed.capturedPercent,preformed.completedPercent);
+end
+fprintf('Unsaturated junctions: %d\n', numel(unsat));
+if ~isempty(activeEnds)
+    fprintf('Remaining bare crosslinker arms: %d   remaining dangling chain ends: %d\n', ...
+        sum(activeEnds(:,4) == 0), sum(activeEnds(:,4) > 0));
+end
+fprintf('Final equilibration: %d integration steps, RMS node speed = %.3e\n', itFinal, rmsSpeedF);
+if rmsSpeedF >= cfg.tolVfinal
+    warning('Final mechanical relaxation did not reach tolVfinal: RMS|v| = %.3e (target %.3e).', ...
+        rmsSpeedF, cfg.tolVfinal);
+end
+
+[Etot, Ebond, Erep] = networkEnergy(nodes, bonds, cfg.b, cfg.kT, cfg.kRep, rEq, cfg.L, ...
+    cfg.repelBondedPairs, cfg.useRepulsionBinning,     cfg.repulsionFullPairThreshold, cfg.kRepAnh, cfg.chainModel);
+    fprintf('Bonded-chain free energy (%s): %.4g kT\n', cfg.chainModel, Ebond);
+fprintf('Pairwise repulsion energy: %.4g\n', Erep);
+fprintf('Total model energy (bonded + repulsion): %.4g\n', Etot);
+
+if isempty(unsat)
+    fprintf('All crosslinker junctions reached degree %d through SSA events.\n', cfg.fA);
+else
+    fprintf('Unsaturated node indices: ');
+    fprintf('%d ', unsat);
+    fprintf('\n');
+end
+
+lammps = struct('status','disabled');
+if cfg.saveLammps
+    lammps = writeLammpsNetwork(nodes, bonds, activeEnds, cfg);
+end
+
+if cfg.saveData
+    save(dataPath, 'nodes', 'bonds', 'activeEnds', 'history', 't', 'nA', 'nB', 'cfg', 'lammps', ...
+        'preformed','chainCountHistory');
+end
+
+if cfg.showLivePlot
+    updateLivePlot(viz, nodes, bonds, activeEnds, cfg, histT, histA, histB);
+    title(viz.ax1, sprintf('Final network: %d junctions, %d chains', size(nodes,1), size(bonds,1)));
+    drawnow;
+end
+
+if recording
+    for extra = 1:cfg.videoFPS*2
+        writeVideo(vid, getframe(viz.fig));
+    end
+    close(vid);
+    fprintf('Saved movie: %s.mp4\n', videoPathBase);
+end
+
+if ~isempty(bonds) && (cfg.saveFinalDistributions || cfg.showFinalHistogram)
+    distributionDir = '';
+    if cfg.saveFinalDistributions, distributionDir = outputDir; end
+    plotChainDistributions(nodes, bonds, cfg, distributionDir, cfg.showFinalHistogram);
+end
+
+results = struct();
+results.nodes = nodes;
+results.bonds = bonds;
+results.activeEnds = activeEnds;
+results.history = history;
+results.t = t;
+results.nA = nA;
+results.nB = nB;
+results.growthMode = cfg.growthMode;
+results.preformed = preformed;
+results.chainCountHistory = chainCountHistory;
+results.unsaturatedNodes = unsat;
+results.finalRmsSpeed = rmsSpeedF;
+results.finalEqIters = itFinal;
+results.energy = struct('total', Etot, 'bonded', Ebond, 'repulsion', Erep);
+results.rEq = rEq;
+results.nAvgFeed = nAvgFeed;
+results.config = cfg;
+results.runtimeSeconds = elapsed;
+results.outputDir = outputDir;
+results.stopReason = stopReason;
+results.requestedConfig = requestedConfig;
+results.dumpDir = dumpState.directory;
+results.nDumps = dumpState.count;
+results.lammps = lammps;
+results.dataFile = dataPath;
+if recording
+    results.videoFile = [videoPathBase '.mp4'];
+else
+    results.videoFile = '';
+end
+end
+
+function cfgOut = localFinalCfg(cfgIn)
+% Reuse same settings but with final-stage tolerances/caps.
+cfgOut = cfgIn;
+cfgOut.tolV = cfgIn.tolVfinal;
+cfgOut.maxEq = cfgIn.maxEqFinal;
+end
+
+function outPath = resolveOutputPath(inPath, outputDir)
+if isempty(outputDir) || isAbsolutePath(inPath)
+    outPath = inPath;
+else
+    outPath = fullfile(outputDir, inPath);
+end
+end
+
+function tf = isAbsolutePath(p)
+tf = false;
+if isempty(p)
+    return;
+end
+if numel(p) >= 2 && p(2) == ':'
+    tf = true;   % Windows drive path, e.g. C:\...
+    return;
+end
+if numel(p) >= 2 && strcmp(p(1:2), '\\')
+    tf = true;   % Windows UNC path
+    return;
+end
+if p(1) == '/' || p(1) == '\'
+    tf = true;
+end
+end
+
+function out = stripMp4Suffix(pathNoExt)
+if numel(pathNoExt) >= 4 && strcmpi(pathNoExt(end-3:end), '.mp4')
+    out = pathNoExt(1:end-4);
+else
+    out = pathNoExt;
+end
+end

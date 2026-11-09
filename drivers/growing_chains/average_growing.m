@@ -1,23 +1,17 @@
-% Three single-run or replicate-average figures: Kuhn number fraction, Kuhn weight fraction,
+﻿% Three single-run or replicate-average figures: Kuhn number fraction, Kuhn weight fraction,
 % and end-to-end distance. Usage snapshots run left to right in each.
 % Each figure shares x/y limits across its own snapshots only.
-addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
+projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+addpath(fullfile(projectRoot,'SRC'));
 % Supply one run folder, or multiple replicates with identical physics and distinct seeds.
 % A single run has fitted curves but no replicate SD shading or bootstrap CI.
-runFolders = {
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_001_rep_01_xA_0.05_seed_11231_20261027_184200_196'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_002_rep_02_xA_0.05_seed_2015_20261027_191753_800'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_003_rep_03_xA_0.05_seed_3215464_20261027_200106_877'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_004_rep_04_xA_0.05_seed_5_20261027_203523_143'
-    'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810\run_005_rep_05_xA_0.05_seed_10_20261027_212502_831'
-   
-    };
+runFolders = {}; % supply saved run folders, or select a batch below
 % Alternatively select a batch and xA; leave runFolders empty to use these:
-batchFolder = ''; % contains batch_summary.mat from run_pkg_cleaned_sweeps
+batchFolder = ''; % contains batch_summary.mat from run_sweep_growing
 selectedXA = .05;
 
 averageOptions = struct();
-averageOptions.usagePercent = [4 20 50 80 100];
+averageOptions.usagePercent = [20 40 60 80 100];
 averageOptions.nBinWidth = 1;       % integer Kuhn bin width; larger = coarser histogram
 averageOptions.distanceBins = 30;
 averageOptions.kuhnYLim = [0 .45];   % fixed number-fraction y range; [] = automatic
@@ -45,7 +39,7 @@ runFolders = cellstr(runFolders);
 if isempty(runFolders)
     error('NetworkGrowth:ReplicateFolders','Set at least one run folder, or batchFolder and selectedXA.');
 end
-outputRoot = fullfile(fileparts(mfilename('fullpath')),'replicate_averages');
+outputRoot = fullfile(projectRoot,'replicate_averages','growing_chains');
 [averageOutputDir,~] = createUniqueRunFolder(outputRoot,'average');
 % Base filename: exports append _kuhn_number, _kuhn_weight, and _end_to_end.
 averageOptions.outputFile = fullfile(averageOutputDir,'replicate_average.png');
@@ -65,3 +59,5 @@ if averageOptions.fitFloryWeight
         'pFromNumber','pDifference','pDifferenceCI95Low','pDifferenceCI95High'}));
 end
 fprintf('Distribution plots saved to: %s\n',averageOutputDir);
+
+

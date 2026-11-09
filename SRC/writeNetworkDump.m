@@ -1,8 +1,9 @@
-function state = writeNetworkDump(state, nodes, bonds, activeEnds, event, t, nA, nB, phase, stopReason)
+function state = writeNetworkDump(state, nodes, bonds, activeEnds, event, t, nA, nB, phase, stopReason, chainCounts)
 % Capture one state for the union of usage, event-count and time triggers.
 % Multiple milestones crossed by one reaction share a single snapshot.
 if ~state.enabled, return; end
 if nargin < 10, stopReason = ''; end
+if nargin < 11, chainCounts = []; end
 if state.initialFreeA > 0
     usage = 100 * (state.initialFreeA - nA) / state.initialFreeA;
 else
@@ -41,6 +42,13 @@ snapshot = struct('schemaVersion',1,'index',state.count,'event',event, ...
     'timeBinRange',timeBins,'nodeCount',size(nodes,1), ...
     'bondCount',size(bonds,1),'activeEndCount',size(activeEnds,1), ...
     'L',state.cfg.L,'b',state.cfg.b,'fA',state.cfg.fA);
+if isfield(state.cfg,'growthMode') && strcmp(state.cfg.growthMode,'preformed')
+    snapshot.schemaVersion = 2;
+    snapshot.growthMode = 'preformed';
+    snapshot.freeMonomers = 0;
+    snapshot.freeKuhnSegments = nB;
+    snapshot.preformed = preformedChainState(chainCounts,nodes,bonds,activeEnds,state.cfg);
+end
 if state.cfg.dumpSaveDistributions
     p = bonds(:,1); q = bonds(:,2);
     rv = nodes(q,1:2) + bonds(:,4:5)*state.cfg.L - nodes(p,1:2);

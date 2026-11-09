@@ -17,7 +17,10 @@ chosen = unique([1:options.videoFrameEvery:numel(files),numel(files)]);
 cfg = metadata.config; cfg.heatGrid = options.heatGrid;
 visible = 'off'; if options.videoPreview, visible = 'on'; end
 % Empty plot([],[]) returns no Line handles, so seed both reservoir curves.
-viz = initVisualization(cfg,0,metadata.initialFreeCrosslinkers,metadata.initialMonomers,visible);
+isPreformed = isfield(cfg,'growthMode') && strcmp(cfg.growthMode,'preformed');
+initialB = metadata.initialMonomers;
+if isPreformed, initialB = metadata.preformedFeed.initialChainCounts; end
+viz = initVisualization(cfg,0,metadata.initialFreeCrosslinkers,initialB,visible);
 figureCleanup = onCleanup(@()close(viz.fig));
 % Offline replay has a white background and optional blue dangling clouds.
 % The live simulation keeps its existing palette and rendering behavior.
@@ -31,6 +34,7 @@ writer = VideoWriter(videoFile,'MPEG-4'); writer.FrameRate = options.videoFPS;
 open(writer);
 videoCleanup = onCleanup(@()close(writer));
 histT = zeros(1,numel(chosen)); histA = histT; histB = histT;
+if isPreformed, histB = zeros(numel(chosen),numel(cfg.chainLengths)); end
 frameIndex = table();
 for j = 1:numel(chosen)
     file = files(chosen(j)).name;
@@ -38,8 +42,14 @@ for j = 1:numel(chosen)
     if ~isfield(s,'nodes')
         error('NetworkGrowth:NoNetworkVideo','Video requires dumpSaveNetwork = true: %s',file);
     end
-    histT(j) = s.ssaTime; histA(j) = s.freeCrosslinkers; histB(j) = s.freeMonomers;
-    updateLivePlot(viz,s.nodes,s.bonds,s.activeEnds,cfg,histT(1:j),histA(1:j),histB(1:j));
+    histT(j) = s.ssaTime; histA(j) = s.freeCrosslinkers;
+    if isPreformed
+        histB(j,:) = s.preformed.freeChainCounts;
+        shownB = histB(1:j,:);
+    else
+        histB(j) = s.freeMonomers; shownB = histB(1:j);
+    end
+    updateLivePlot(viz,s.nodes,s.bonds,s.activeEnds,cfg,histT(1:j),histA(1:j),shownB);
     title(viz.ax1,sprintf('Saved state | A usage %.3g%% | event %d',s.usagePercent,s.event));
     title(viz.ax2,sprintf('t = %.5g | %s | equal frame intervals',s.ssaTime,s.phase),'Interpreter','none');
     drawnow;

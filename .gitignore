@@ -25,6 +25,9 @@ tests/*
 !tests/testNetworkPrestretch.m
 !tests/testNetworkDumpVisualization.m
 !tests/testSelfLoopKinetics.m
+!tests/testPreformedGrowth.m
+!tests/testGrowthModeIntegration.m
+runs_preformed/
 runs_pkg_cleaned/
 replicate_averages/
 SESSION_NOTES.md

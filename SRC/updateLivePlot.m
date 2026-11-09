@@ -38,6 +38,10 @@ else
 end
 
 set(viz.hA, 'XData', histT, 'YData', histA);
-set(viz.hB, 'XData', histT, 'YData', histB);
+if isfield(cfg,'growthMode') && strcmp(cfg.growthMode,'preformed')
+    for s = 1:numel(viz.hB), set(viz.hB(s),'XData',histT,'YData',histB(:,s)); end
+else
+    set(viz.hB, 'XData', histT, 'YData', histB);
+end
 end
 

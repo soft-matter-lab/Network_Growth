@@ -1,9 +1,9 @@
-% Build LAMMPS inputs from ONE previously saved simulation. No growth is run.
+﻿% Build LAMMPS inputs from ONE previously saved simulation. No growth is run.
 % Edit inputFolder, then run this script. A dumps subfolder is also accepted.
-addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
+projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+addpath(fullfile(projectRoot,'SRC'));
 
-inputFolder = fullfile(fileparts(mfilename('fullpath')),'runs_pkg_cleaned', ...
-    'single_xA_0p0500_N_6714_20261026_122029_480'); % '' opens a folder picker
+inputFolder = ''; % '' opens a folder picker
 
 builderOptions = struct();
 builderOptions.outputDir = ''; % '' = put the three LAMMPS files in the simulation folder
@@ -26,3 +26,5 @@ end
 
 lammpsBuild = buildLammpsIngredients(inputFolder,builderOptions);
 disp(lammpsBuild);
+
+

@@ -1,6 +1,6 @@
 function report = postprocessNetworkDumps(runOrDumpDir, options)
 % Export a saved run's video, individual checkpoints and distribution comparison.
-% User-facing entry point: visualize_pkg_cleaned.m in the project root.
+% Entry points: visualize_growing.m / visualize_preformed.m under drivers/.
 if nargin < 2, options = struct(); end
 defaults = struct('outputRoot','','makeVideo',true,'videoFrameEvery',1, ...
     'videoFPS',6,'videoHoldLastSeconds',2,'videoPreview',false,'heatGrid',150, ...
@@ -13,7 +13,8 @@ defaults = struct('outputRoot','','makeVideo',true,'videoFrameEvery',1, ...
     'displacementLimit',[],'displacementBins',40,'displacementCLim',[], ...
     'displacementColorPercentile',98, ...
     'weightXLim',[],'weightYLim',[], ...
-    'prestretchBins',30,'prestretchXLim',[],'prestretchYLim',[]);
+    'prestretchBins',30,'prestretchXLim',[],'prestretchYLim',[], ...
+    'savePreformedProgress',true);
 options = mergeConfig(defaults,options);
 validateattributes(options.checkpointUsagePercent,{'numeric'},{'vector','nonempty','finite','>=',0,'<=',100});
 validateattributes(options.comparisonUsagePercent,{'numeric'},{'vector','nonempty','finite','>=',0,'<=',100});
@@ -33,6 +34,13 @@ if options.saveCheckpointPlots || options.saveFinalPlot || options.saveCompariso
     report.histogramStyle = networkDumpHistogramStyle(dumpDir,options);
 end
 save(fullfile(outputDir,'visualization_config.mat'),'options','dumpDir','metadata');
+if options.savePreformedProgress && isfield(metadata,'preformedFeed')
+    report.preformedProgressFile = fullfile(outputDir,'preformed_progress.png');
+    [fig,progress] = plotPreformedProgress(dumpDir,struct('visible','off', ...
+        'outputFile',report.preformedProgressFile));
+    close(fig);
+    writetable(progress,fullfile(outputDir,'preformed_progress.csv'));
+end
 
 if options.makeVideo
     if hasNetwork

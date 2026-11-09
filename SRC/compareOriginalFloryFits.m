@@ -11,7 +11,7 @@ end
 edges=averageData.edges{1}; counts=(edges(1:end-1)+edges(2:end))/2;
 if any(abs(diff(edges)-1)>1e-9) || any(abs(counts-round(counts))>1e-9)
     error('NetworkGrowth:OriginalFloryBins', ...
-        'This comparison needs individual integer-count bins. Re-run average_pkg_cleaned with nBinWidth=1.');
+        'This comparison needs individual integer-count bins. Re-run average_growing with nBinWidth=1.');
 end
 counts=round(counts); targets=averageData.targets; T=numel(targets);
 result=struct('targets',targets,'fit',{{}},'fitTable',table(),'options',options, ...

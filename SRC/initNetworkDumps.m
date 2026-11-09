@@ -35,5 +35,14 @@ metadata = struct('schemaVersion',1,'config',cfg, ...
     'nodesColumns',{{'x_unwrapped','y_unwrapped','degree'}}, ...
     'bondsColumns',{{'node1','node2','kuhnCount','imageX','imageY'}}, ...
     'activeEndsColumns',{{'x_wrapped','y_wrapped','parent','kuhnCount'}});
+if isfield(cfg,'growthMode') && strcmp(cfg.growthMode,'preformed')
+    metadata.schemaVersion = 2;
+    metadata.growthMode = cfg.growthMode;
+    metadata.preformedFeed = cfg.preformedFeed;
+    metadata.initialMonomers = 0;
+    metadata.initialFreeKuhnSegments = NB0;
+    metadata.historyDefinition = '[event,t,dt,type,nA,freeKuhnSegments,nNodes,nBonds,nActive,eqIters]';
+    metadata.eventTypes = {'chain addition','fresh crosslinker','existing crosslinker'};
+end
 save(fullfile(state.directory,'metadata.mat'), 'metadata');
 end

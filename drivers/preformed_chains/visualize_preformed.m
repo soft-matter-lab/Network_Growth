@@ -1,10 +1,12 @@
-% Offline visualization driver. Edit inputFolder, then run this file.
+﻿% Offline visualization driver. Edit inputFolder, then run this file.
 % Accepts ONE simulation run folder or its dumps subfolder. No simulation runs.
-addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
+projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+addpath(fullfile(projectRoot,'SRC'));
 
-inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_pkg_cleaned\single_xA_0p0500_N_8704_20261105_173707_147'; % e.g. 'E:\...\runs_pkg_cleaned\single_xA_...'; '' opens a folder picker
+inputFolder = ''; % choose one saved run or dumps folder
 
 vizOptions = struct();
+vizOptions.savePreformedProgress = true; % remaining species counts + capture/completion
 vizOptions.outputRoot = ''; % '' = a new visualization folder under the selected run
 
 % Network movie: clouds + bonds + junctions, alongside reservoir histories.
@@ -22,7 +24,7 @@ vizOptions.danglingCloudOpacity = .85; % 0..1; dark-blue centers fade to pale bl
 
 % Checkpoint panels: network, chain number/weight fractions, displacement, prestretch.
 vizOptions.saveCheckpointPlots = true;
-vizOptions.checkpointUsagePercent = 0:4:100;
+vizOptions.checkpointUsagePercent = 0:10:100;
 vizOptions.saveFinalPlot = true; % final state after relaxation, separate from 100%
 % Histogram bins and axes are fixed across ALL saved states, including the final.
 % [] chooses a shared range automatically; set limits to compare different runs.
@@ -42,12 +44,12 @@ vizOptions.displacementColorPercentile = 98; % occupied-bin percentile across ru
 
 % Overlaid distributions: Kuhn counts, contour lengths, end-to-end lengths, prestretch.
 vizOptions.saveComparison = true;
-vizOptions.comparisonUsagePercent = [0 25 50 75 100]; % or 0:5:100 for every milestone
+vizOptions.comparisonUsagePercent = [0 20 40 60 80 100]; % or 0:5:100 for every milestone
 vizOptions.population = 'completed'; % 'completed', 'dangling', or 'all' for contour panels
 vizOptions.showComparisonFigure = true;
 
 if isempty(inputFolder)
-    inputFolder = uigetdir(pwd,'Select one run folder or its dumps folder');
+    inputFolder = uigetdir(projectRoot,'Select one preformed-chain run or its dumps folder');
     if isequal(inputFolder,0)
         disp('Visualization cancelled.');
         return;
@@ -57,3 +59,6 @@ end
 visualizationReport = postprocessNetworkDumps(inputFolder,vizOptions);
 fprintf('\nVisualization output: %s\n',visualizationReport.outputDir);
 disp(visualizationReport);
+
+
+

@@ -1,0 +1,62 @@
+﻿% Offline visualization driver. Edit inputFolder, then run this file.
+% Accepts ONE simulation run folder or its dumps subfolder. No simulation runs.
+projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+addpath(fullfile(projectRoot,'SRC'));
+
+inputFolder = ''; % choose one saved run or dumps folder
+
+vizOptions = struct();
+vizOptions.outputRoot = ''; % '' = a new visualization folder under the selected run
+
+% Network movie: clouds + bonds + junctions, alongside reservoir histories.
+vizOptions.makeVideo = true;
+vizOptions.videoFrameEvery = 1; % use every Nth saved snapshot; always include the last
+vizOptions.videoFPS = 6;
+vizOptions.videoHoldLastSeconds = 2;
+vizOptions.videoPreview = false; % show the figure while rendering
+vizOptions.heatGrid = 150;
+% One saved state per video frame, with equal frame duration. No interpolation.
+
+% Dangling-chain Gaussian clouds in the network panels (movie + saved PNGs).
+vizOptions.showDanglingClouds = true; % false = bonds and junctions only
+vizOptions.danglingCloudOpacity = .85; % 0..1; dark-blue centers fade to pale blue/white
+
+% Checkpoint panels: network, chain number/weight fractions, displacement, prestretch.
+vizOptions.saveCheckpointPlots = true;
+vizOptions.checkpointUsagePercent = 0:10:100;
+vizOptions.saveFinalPlot = true; % final state after relaxation, separate from 100%
+% Histogram bins and axes are fixed across ALL saved states, including the final.
+% [] chooses a shared range automatically; set limits to compare different runs.
+vizOptions.kuhnXLim = [];        % contour length n, e.g. [0 100]
+vizOptions.weightXLim = [];     % [] = same n range as kuhnXLim, or e.g. [0 100]
+vizOptions.kuhnYLim = [];        % fixed probability-per-bin y range, e.g. [0 .5]
+vizOptions.weightYLim = [];     % independent fixed weight-fraction y range, e.g. [0 .2]
+vizOptions.prestretchBins = 30; % lambda_i = bond length / (n_i*b), dimensionless
+vizOptions.prestretchXLim = []; % [] = run-wide range, includes lambda > 1 if present
+vizOptions.prestretchYLim = []; % [] = run-wide probability-per-bin scale
+vizOptions.displacementBins = 40; % bins per axis in the 2D endpoint histogram
+vizOptions.displacementLimit = []; % [] = run-wide auto; R means x,y span [-R,R]
+vizOptions.displacementCLim = [];  % [] = shared robust auto scale; or force e.g. [0 .02]
+vizOptions.displacementColorPercentile = 98; % occupied-bin percentile across run; lower = more contrast, 100 = full max
+% Empty bins are white; gold-to-red colors show increasing probability.
+% The color cap stays fixed across snapshots. Higher bins saturate, without changing data.
+
+% Overlaid distributions: Kuhn counts, contour lengths, end-to-end lengths, prestretch.
+vizOptions.saveComparison = true;
+vizOptions.comparisonUsagePercent = [0 20 40 60 80 100]; % or 0:5:100 for every milestone
+vizOptions.population = 'completed'; % 'completed', 'dangling', or 'all' for contour panels
+vizOptions.showComparisonFigure = true;
+
+if isempty(inputFolder)
+    inputFolder = uigetdir(projectRoot,'Select one run folder or its dumps folder');
+    if isequal(inputFolder,0)
+        disp('Visualization cancelled.');
+        return;
+    end
+end
+
+visualizationReport = postprocessNetworkDumps(inputFolder,vizOptions);
+fprintf('\nVisualization output: %s\n',visualizationReport.outputDir);
+disp(visualizationReport);
+
+

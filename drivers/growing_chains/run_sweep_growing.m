@@ -1,5 +1,6 @@
-% New batch driver: edit base settings and sweep mode, then run this script.
-addpath(fullfile(fileparts(mfilename('fullpath')),'SRC'));
+﻿% New batch driver: edit base settings and sweep mode, then run this script.
+projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+addpath(fullfile(projectRoot,'SRC'));
 baseCfg = defaultNetworkAConfig();
 
 % Shared physics (fixed across all runs except xA and optional NtotalScale).
@@ -75,6 +76,7 @@ sweep.saveResults = true;
 
 plan = makeNetworkSweepPlan(baseCfg,sweep);
 disp(plan);
-outputRoot = fullfile(pwd,'batch_runs_pkg_cleaned_sweeps');
+outputRoot = fullfile(projectRoot,'batch_runs_pkg_cleaned_sweeps');
 [summary,batchDir] = runNetworkSweep(baseCfg,sweep,outputRoot);
 disp(summary);
+

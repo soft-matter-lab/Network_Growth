@@ -2,6 +2,7 @@ function cfg = defaultNetworkAConfig()
 % Default configuration for the cleaned Network A simulation package.
 
 cfg = struct();
+cfg.growthMode = 'growing'; % Case A; Case B uses defaultNetworkBConfig
 
 % Chemistry / composition
 cfg.L = 100;

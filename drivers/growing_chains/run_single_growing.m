@@ -1,8 +1,9 @@
-% Main driver for the cleaned Network A workflow.
+﻿% Main driver for the cleaned Network A workflow.
 % Edit parameters below, then run this file.
 % Radhika downloaded this from the original Network_Growth repo and cleaned it up to remove unnecessary dependencies and make it easier to run.
 
-addpath(fullfile(fileparts(mfilename('fullpath')), 'SRC'));
+projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+addpath(fullfile(projectRoot,'SRC'));
 
 cfg = defaultNetworkAConfig();
 
@@ -65,7 +66,7 @@ cfg.dumpSaveNetwork = true;    % enables network reconstruction and offline RDF
 cfg.dumpSaveFinal = true;
 % ----------------------------------------------------
 
-outputRoot = fullfile(pwd, 'runs_pkg_cleaned');
+outputRoot = fullfile(projectRoot, 'runs_pkg_cleaned');
 NtotalRun = resolveNtotal(cfg);   % label only; the run resolves it itself (keeps rEq on the nominal count)
 fprintf('Ntotal = %d (L = %g, b = %g)\n', NtotalRun, cfg.L, cfg.b);
 runLabel = sprintf('single_xA_%s_N_%d', strrep(sprintf('%.4f', cfg.xA), '.', 'p'), NtotalRun);
@@ -77,3 +78,4 @@ results = runNetworkA_cleaned(cfg);
 save(fullfile(runDir, 'results_struct.mat'), 'results');
 fprintf('Saved run to folder: %s\n', runDir);
 fprintf('Run ID: %s\n', runName);
+

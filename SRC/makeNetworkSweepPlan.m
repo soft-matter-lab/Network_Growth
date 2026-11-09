@@ -2,10 +2,33 @@ function [plan, sweep] = makeNetworkSweepPlan(baseCfg, sweep)
 % Build a deterministic run plan without launching simulations.
 % Replicate blocks reuse their seed across compositions; fA stays fixed.
 if nargin < 2, sweep = struct(); end
-baseCfg = mergeConfig(defaultNetworkAConfig(),baseCfg);
+baseCfg = resolveNetworkConfig(baseCfg);
 defaults = struct('mode','replicated_composition','xA',[.01 .025 .05 .075 .10], ...
-    'seeds',[1 2 3],'NtotalScaleByXA',[],'continueOnError',false,'saveResults',true);
+    'seeds',[1 2 3],'NtotalScaleByXA',[],'continueOnError',false,'saveResults',true, ...
+    'parameterSets',{{}});
 sweep = mergeConfig(defaults,sweep);
+% Explicit parameter sets avoid an accidental Cartesian product of mixtures.
+% Each set is crossed with the selected compositions and replicate seeds.
+if ~isempty(sweep.parameterSets)
+    if ~iscell(sweep.parameterSets) || ~all(cellfun(@(s)isstruct(s)&&isscalar(s),sweep.parameterSets))
+        error('NetworkGrowth:SweepParameters','parameterSets must be a cell array of scalar configuration structs.');
+    end
+    plan = table(); inner = sweep; inner.parameterSets = {};
+    for j = 1:numel(sweep.parameterSets)
+        overrides = sweep.parameterSets{j};
+        if any(~ismember(fieldnames(overrides),{'chainLengths','chainNumberFractions','chainCounts','fA','kAddition','kChem','kEndEnd','kSelfLoop'}))
+            error('NetworkGrowth:SweepParameters','Parameter sets support chain mixtures, functionality, and reaction rates only.');
+        end
+        if ~strcmp(baseCfg.growthMode,'preformed') && any(startsWith(fieldnames(overrides),'chain'))
+            error('NetworkGrowth:SweepParameters','Preformed-chain parameter sets require growthMode=preformed.');
+        end
+        part = makeNetworkSweepPlan(mergeConfig(baseCfg,overrides),inner);
+        part.parameterSetIndex = repmat(j,height(part),1);
+        plan = [plan;part]; %#ok<AGROW>
+    end
+    plan.runIndex = (1:height(plan))';
+    return;
+end
 sweep.mode = validatestring(sweep.mode,{'replicates','composition','replicated_composition'});
 validateattributes(sweep.seeds,{'numeric'},{'vector','nonempty','real','finite', ...
     'integer','>=',0,'<=',2^32-1});
@@ -54,6 +77,26 @@ for rep = 1:numel(seeds)
             error('NetworkGrowth:NoSeed','xA = %g and Ntotal = %d provide no seed crosslinker.',cfg.xA,total);
         end
         plan{k,:} = [k rep comp cfg.xA seeds(rep) cfg.NtotalScale total initialA cfg.fA cfg.fB];
+    end
+end
+if strcmp(baseCfg.growthMode,'preformed')
+    plan.initialChains = zeros(nRuns,1);
+    plan.initialKuhnSegments = zeros(nRuns,1);
+    plan.unusedKuhnBudget = zeros(nRuns,1);
+    plan.chainEndArmRatio = zeros(nRuns,1);
+    for k = 1:nRuns
+        cfg = baseCfg; cfg.xA = plan.xA(k); cfg.NtotalScale = plan.NtotalScale(k);
+        feed = resolvePreformedFeed(cfg);
+        plan.initialChains(k) = sum(feed.initialChainCounts);
+        plan.initialKuhnSegments(k) = feed.initialKuhnCount;
+        plan.unusedKuhnBudget(k) = feed.unusedKuhnBudget;
+        plan.chainEndArmRatio(k) = feed.chainEndArmRatio;
+        for s = 1:3
+            n = 0; count = 0;
+            if s<=numel(feed.chainLengths), n = feed.chainLengths(s); count = feed.initialChainCounts(s); end
+            plan.(sprintf('chainLength%d',s))(k) = n;
+            plan.(sprintf('initialChainCount%d',s))(k) = count;
+        end
     end
 end
 end
