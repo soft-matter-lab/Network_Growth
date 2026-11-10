@@ -4,7 +4,8 @@ function frameIndex = exportNetworkDumpVideo(runOrDumpDir, videoFile, options)
 if nargin < 3, options = struct(); end
 options = mergeConfig(struct('videoFrameEvery',1,'videoFPS',6, ...
     'videoHoldLastSeconds',2,'videoPreview',false,'heatGrid',150, ...
-    'showDanglingClouds',true,'danglingCloudOpacity',.85),options);
+    'showDanglingClouds',true,'danglingCloudOpacity',.85, ...
+    'showNodeConnectivity',true,'colorPreformedBonds',true,'showSphericalNodes',true),options);
 validateattributes(options.videoFrameEvery,{'numeric'},{'scalar','integer','positive','finite'});
 validateattributes(options.videoFPS,{'numeric'},{'scalar','real','positive','finite'});
 validateattributes(options.videoHoldLastSeconds,{'numeric'},{'scalar','real','nonnegative','finite'});
@@ -15,6 +16,9 @@ validateattributes(options.danglingCloudOpacity,{'numeric'},{'scalar','real','fi
 if isempty(files), error('NetworkGrowth:NoSnapshots','There are no completed snapshot files.'); end
 chosen = unique([1:options.videoFrameEvery:numel(files),numel(files)]);
 cfg = metadata.config; cfg.heatGrid = options.heatGrid;
+cfg.showNodeConnectivity = options.showNodeConnectivity;
+cfg.showSphericalNodes = options.showSphericalNodes;
+cfg.colorPreformedBonds = options.colorPreformedBonds;
 visible = 'off'; if options.videoPreview, visible = 'on'; end
 % Empty plot([],[]) returns no Line handles, so seed both reservoir curves.
 isPreformed = isfield(cfg,'growthMode') && strcmp(cfg.growthMode,'preformed');
@@ -27,7 +31,8 @@ figureCleanup = onCleanup(@()close(viz.fig));
 viz.showDanglingClouds = options.showDanglingClouds;
 set(viz.hHeat,'CData',ones(cfg.heatGrid,cfg.heatGrid,3), ...
     'AlphaData',options.danglingCloudOpacity,'AlphaDataMapping','none','Tag','danglingClouds');
-set(viz.hChain,'Color',[.30 .30 .30],'LineWidth',1.4);
+set(viz.hChain,'LineWidth',1.4);
+if ~isPreformed, set(viz.hChain,'Color',[.30 .30 .30]); end
 set(viz.ax1,'Color','w');
 set(viz.fig,'PaperPositionMode','auto','InvertHardcopy','off');
 writer = VideoWriter(videoFile,'MPEG-4'); writer.FrameRate = options.videoFPS;

@@ -1,4 +1,4 @@
-﻿% Three single-run or replicate-average figures: Kuhn number fraction, Kuhn weight fraction,
+% Three single-run or replicate-average figures: Kuhn number fraction, Kuhn weight fraction,
 % and end-to-end distance. Usage snapshots run left to right in each.
 % Each figure shares x/y limits across its own snapshots only.
 projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
@@ -7,7 +7,7 @@ addpath(fullfile(projectRoot,'SRC'));
 % A single run has fitted curves but no replicate SD shading or bootstrap CI.
 runFolders = {}; % supply saved run folders, or select a batch below
 % Alternatively select a batch and xA; leave runFolders empty to use these:
-batchFolder = ''; % contains batch_summary.mat from run_sweep_growing
+batchFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810'; % contains batch_summary.mat from run_sweep_growing
 selectedXA = .05;
 
 averageOptions = struct();

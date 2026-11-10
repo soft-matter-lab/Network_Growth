@@ -1,11 +1,14 @@
-﻿% Offline visualization driver. Edit inputFolder, then run this file.
+% Offline visualization driver. Edit inputFolder, then run this file.
 % Accepts ONE simulation run folder or its dumps subfolder. No simulation runs.
 projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 addpath(fullfile(projectRoot,'SRC'));
 
-inputFolder = ''; % choose one saved run or dumps folder
+inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_preformed\preformed_xA_0.05_seed_11231_20261109_130324_646'; % choose one saved run or dumps folder
 
 vizOptions = struct();
+vizOptions.showNodeConnectivity = true; % degree 1 = light gray, degree fA = black; false = all black
+vizOptions.showSphericalNodes = true;   % shaded beads; false = flat circles
+vizOptions.colorPreformedBonds = true;  % ascending N: black, red, burgundy; false = all black
 vizOptions.savePreformedProgress = true; % remaining species counts + capture/completion
 vizOptions.outputRoot = ''; % '' = a new visualization folder under the selected run
 

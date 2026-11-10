@@ -49,6 +49,8 @@ cfg.kSelfLoop = 0.01;           % independent loop multiplier on kChem; 0 disabl
 cfg.selfLoopDistanceFactor = 1; % d_eff = factor*b*sqrt(n1+n2), only in the reaction weight
 
 cfg.showLivePlot = true;
+cfg.showNodeConnectivity = true; % live/video nodes: light gray to black; false = all black
+cfg.showSphericalNodes = true;   % shaded beads; false = flat circles
 cfg.makeVideo = true;
 cfg.videoName = 'networkA_formation_v2_cleaned';
 cfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';

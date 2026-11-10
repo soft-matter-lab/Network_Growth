@@ -335,6 +335,6 @@ function physics = physicsConfig(cfg)
 if ~isfield(cfg,'growthMode'), cfg.growthMode = 'growing'; end % legacy snapshots
 names = fieldnames(cfg);
 output = startsWith(names,{'dump','save','show','video','output','data','plot','eqPlot','heatGrid','lammps'});
-output = output | ismember(names,{'randSeed','makeVideo'});
+output = output | ismember(names,{'randSeed','makeVideo','colorPreformedBonds'});
 physics = orderfields(rmfield(cfg,names(output)));
 end

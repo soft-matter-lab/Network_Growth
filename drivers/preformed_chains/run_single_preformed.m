@@ -11,8 +11,8 @@ cfg.NtotalScale = 1.4;
 cfg.areaFraction = 1;
 cfg.xA = .05;
 cfg.fA = 4;
-cfg.chainLengths = 10;           % e.g. [20 60] or [20 60 120]; max three
-cfg.chainNumberFractions = 1;    % e.g. [.7 .3] or [.5 .3 .2]; sum = 1
+cfg.chainLengths = [10];           % e.g. [20 60] or [20 60 120]; max three
+cfg.chainNumberFractions = [1];    % e.g. [.7 .3] or [.5 .3 .2]; sum = 1
 cfg.chainCounts = [];            % optional exact integer counts; must fit budget
 
 % Case B reactions. No dangling growth, dangling joining, or new-cluster nucleation.
@@ -37,6 +37,9 @@ cfg.massEq = 1;
 cfg.gammaEq = .5;
 
 cfg.showLivePlot = true;
+cfg.showNodeConnectivity = true; % live/video nodes: light gray to black; false = all black
+cfg.showSphericalNodes = true;   % shaded beads; false = flat circles
+cfg.colorPreformedBonds = true;  % ascending N: black, red, burgundy
 cfg.makeVideo = true;
 cfg.showFinalHistogram = true;
 cfg.saveFinalDistributions = true;

@@ -27,6 +27,7 @@ tests/*
 !tests/testSelfLoopKinetics.m
 !tests/testPreformedGrowth.m
 !tests/testGrowthModeIntegration.m
+!tests/testNetworkColors.m
 runs_preformed/
 runs_pkg_cleaned/
 replicate_averages/
@@ -34,3 +35,4 @@ SESSION_NOTES.md
 tmp/
 tmp/network_growth_review/manuscript_page_1.png
 tmp/network_growth_review/network_growth_source_2026-10-21.zip
+figure_exports/

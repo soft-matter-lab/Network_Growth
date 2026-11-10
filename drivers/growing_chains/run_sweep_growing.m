@@ -42,6 +42,8 @@ baseCfg.gammaEq = .5;
 
 % Batch output: capture data now, plot it later.
 baseCfg.showLivePlot = false;
+baseCfg.showNodeConnectivity = true; % used if live plotting/video is enabled
+baseCfg.showSphericalNodes = true;   % shaded beads; false = flat circles
 baseCfg.makeVideo = false;
 baseCfg.showFinalHistogram = false;
 baseCfg.saveFinalDistributions = false;

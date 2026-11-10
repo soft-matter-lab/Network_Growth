@@ -5,7 +5,8 @@ function [fig, rdf] = plotNetworkDump(snapshotOrFile, options)
 % The optional second output returns numerical RDF data only; no RDF is plotted.
 if nargin < 2, options = struct(); end
 options = mergeConfig(struct('visible','on','outputFile','','rdfEdges',[], ...
-    'histogramStyle',[],'heatGrid',150,'showDanglingClouds',true,'danglingCloudOpacity',.85),options);
+    'histogramStyle',[],'heatGrid',150,'showDanglingClouds',true,'danglingCloudOpacity',.85, ...
+    'showNodeConnectivity',true,'colorPreformedBonds',true,'showSphericalNodes',true),options);
 validateattributes(options.showDanglingClouds,{'logical','numeric'},{'scalar','binary'});
 validateattributes(options.danglingCloudOpacity,{'numeric'},{'scalar','real','finite','>=',0,'<=',1});
 validateattributes(options.heatGrid,{'numeric'},{'scalar','integer','>=',2,'finite'});
@@ -42,12 +43,14 @@ if isfield(s,'nodes')
             'AlphaDataMapping','none','Tag','danglingClouds');
         set(ax,'YDir','normal');
     end
-    [x,y] = buildSkeleton(s.nodes,s.bonds,s.L);
-    plot(ax,x,y,'-','Color',[.35 .35 .35]); hold(ax,'on');
-    xy = wrapPoint(s.nodes(:,1:2),s.L);
-    scatter(ax,xy(:,1),xy(:,2),35,s.nodes(:,3),'filled');
+    colors = networkColorStyle(s,options);
+    graphics = initNetworkGraphics(ax,colors,35,1.4,[.35 .35 .35]);
+    updateNetworkGeometry(graphics,s.nodes,s.bonds,s.L);
     axis(ax,'equal'); xlim(ax,[0 s.L]); ylim(ax,[0 s.L]);
-    cb = colorbar(ax); cb.Label.String = 'junction degree';
+    if colors.showNodeConnectivity
+        colormap(ax,repmat(linspace(.8,0,256)',1,3)); clim(ax,[1 colors.fA]);
+        cb = colorbar(ax); cb.Label.String = 'junction degree'; cb.Ticks = 1:colors.fA;
+    end
     xlabel(ax,'x'); ylabel(ax,'y');
     title(ax,sprintf('Network: %d junctions, %d chains',s.nodeCount,s.bondCount));
     if nargout > 1, rdf = networkRdf(s.nodes,s.L,options.rdfEdges); end
@@ -142,5 +145,10 @@ xline(ax,1,':','\lambda = 1','LabelVerticalAlignment','middle','HandleVisibility
 ax.Tag = 'prestretchHistogram';
 title(layout,sprintf('A usage %.3g%% | event %d | t = %.5g | %s', ...
     s.usagePercent,s.event,s.ssaTime,s.phase),'Interpreter','none');
+if isfield(s,'nodes') && colors.showSphericalNodes
+    % Final tile/colorbar layout determines the bead diameter in display points.
+    drawnow;
+    updateNetworkGeometry(graphics,s.nodes,s.bonds,s.L);
+end
 if ~isempty(options.outputFile), exportgraphics(fig,options.outputFile,'Resolution',180); end
 end

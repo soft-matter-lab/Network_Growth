@@ -30,6 +30,9 @@ baseCfg.massEq = 1;
 baseCfg.gammaEq = .5;
 
 baseCfg.showLivePlot = false;
+baseCfg.showNodeConnectivity = true; % used if live plotting/video is enabled
+baseCfg.showSphericalNodes = true;   % shaded beads; false = flat circles
+baseCfg.colorPreformedBonds = true;  % ascending N: black, red, burgundy
 baseCfg.makeVideo = false;
 baseCfg.showFinalHistogram = false;
 baseCfg.saveFinalDistributions = false;

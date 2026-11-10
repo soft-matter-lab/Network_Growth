@@ -64,6 +64,9 @@ cfg.repulsionFullPairThreshold = 120; % use full all-pairs below this N
 
 % Visualization and output
 cfg.showLivePlot = true;
+cfg.showNodeConnectivity = true; % light gray at degree 1, black at fA; false = all black
+cfg.showSphericalNodes = true;   % shaded beads with a soft upper-left highlight; false = flat circles
+cfg.colorPreformedBonds = true;  % Case B: ascending N = black, red, burgundy
 cfg.plotEvery = 1;
 cfg.eqPlotEvery = 3;
 cfg.heatGrid = 150;

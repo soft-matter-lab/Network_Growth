@@ -6,6 +6,8 @@ addpath(fullfile(projectRoot,'SRC'));
 inputFolder = ''; % choose one saved run or dumps folder
 
 vizOptions = struct();
+vizOptions.showNodeConnectivity = true; % degree 1 = light gray, degree fA = black; false = all black
+vizOptions.showSphericalNodes = true;   % shaded beads; false = flat circles
 vizOptions.outputRoot = ''; % '' = a new visualization folder under the selected run
 
 % Network movie: clouds + bonds + junctions, alongside reservoir histories.

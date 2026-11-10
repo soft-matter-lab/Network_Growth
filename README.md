@@ -422,6 +422,36 @@ PNG/CSV export; it is independent of dumps, `saveData`, and `showFinalHistogram`
 
 ## Offline visualization and analysis
 
+Node colors use a fixed light-gray-to-black scale: degree 1 is light gray
+(`RGB = [.8 .8 .8]`), degree `fA` is black, and intermediate degrees interpolate
+linearly. Isolated seeds use the same light gray as degree 1. Degree counts
+completed strand connections, with a self-loop contributing two; dangling
+attachments do not contribute to this connectivity scale. The scale never
+renormalizes to the most connected node in a frame.
+
+```matlab
+vizOptions.showNodeConnectivity = true; % false = all node fills black
+vizOptions.colorPreformedBonds = true;  % Case B; false = all strands black
+vizOptions.showSphericalNodes = true;   % false = flat circles
+```
+
+For preformed chains, colors follow ascending **prescribed** lengths: shortest
+black, second red, third burgundy (`#800020`). A one-length feed uses black.
+The complete saved mixture fixes colors across all frames, even when a species
+has no completed strands yet. Legends identify N; periodic pieces of a strand
+retain its color. Existing saved runs can be recolored without rerunning growth.
+These controls apply to checkpoint/final PNGs and replay videos. Live simulation
+and its video use the same names on `cfg` (or `baseCfg` in the sweep driver).
+They change only presentation; saved geometry and the reaction model are unchanged.
+
+Spherical beads have a soft upper-left highlight and darkened rims, using the
+connectivity color as their base material. Black beads remain dark but have a
+gray reflection, so the surface looks rounded. Turn `showSphericalNodes` off
+for the original solid circles (including literal black when connectivity
+coloring is off). This is a 2D rendering effect, not a bead radius used by the
+simulation or LAMMPS. The same toggle works in both visualizers, replay videos,
+and live run drivers (`cfg` / `baseCfg`).
+
 **Start with `visualize_growing.m` or `visualize_preformed.m` in the corresponding driver folder.** Set
 `inputFolder` to one run folder or its `dumps` subfolder, then run the script.
 Leaving it empty opens a folder picker. Choose an individual run inside a batch,
