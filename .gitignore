@@ -28,6 +28,10 @@ tests/*
 !tests/testPreformedGrowth.m
 !tests/testGrowthModeIntegration.m
 !tests/testNetworkColors.m
+!tests/testPerformanceEquivalence.m
+!tests/reference/
+tests/reference/*
+!tests/reference/performance_baseline/
 runs_preformed/
 runs_pkg_cleaned/
 replicate_averages/
@@ -36,3 +40,13 @@ tmp/
 tmp/network_growth_review/manuscript_page_1.png
 tmp/network_growth_review/network_growth_source_2026-10-21.zip
 figure_exports/
+figure_runs/*
+tests/reference/performance_baseline/buildEndJoiningEvents.m.txt
+.gitignore
+tests/reference/performance_baseline/buildPreformedChainEvents.m.txt
+tests/reference/performance_baseline/buildGrowingChainEvents.m.txt
+tests/reference/performance_baseline/chainSpring.m.txt
+tests/reference/performance_baseline/equilibrateNetwork.m.txt
+tests/reference/performance_baseline/repulsionPairs.m.txt
+tests/reference/performance_baseline/README.txt
+simulation_data_exports/*

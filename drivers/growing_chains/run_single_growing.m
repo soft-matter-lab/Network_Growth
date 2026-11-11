@@ -15,10 +15,11 @@ cfg.L = 100;            % box side length
 %   xA = 0.050 (5.0%)  -> NtotalScale = 1.25-1.30
 %   xA = 0.075 (7.5%)  -> NtotalScale = 1.35-1.40
 %   xA = 0.100 (10.0%) -> NtotalScale = 1.50-1.60
+
 cfg.NtotalScale = 1.75;  % multiplier on computed Ntotal (1 = none)
 cfg.areaFraction = 1.0; % Ntotal is computed: Ntotal*pi*b^2/4 = areaFraction*L^2
 cfg.xA = 0.05;         % crosslinker feed mole fraction
-cfg.fA = 4;            % crosslinker functionality
+cfg.fA = 5;            % crosslinker functionality
 cfg.fB = 2;            % linker functionality (kept as metadata)
 
 cfg.b = 1.6;
@@ -54,10 +55,12 @@ cfg.showSphericalNodes = true;   % shaded beads; false = flat circles
 cfg.makeVideo = true;
 cfg.videoName = 'networkA_formation_v2_cleaned';
 cfg.dataFile = 'Network_PartA_v2_Cleaned_Data.mat';
+
 % Three final LAMMPS files in this sample's folder.
 cfg.saveLammps = true;
 cfg.lammpsKLD = 0.414;
 cfg.lammpsIncludeDanglingKuhn = true; % all chain-bound Kuhn segments; exclude free background B
+
 % Raw progress snapshots, visualized later with plotNetworkDumps(runDir).
 cfg.saveDumps = true;
 cfg.dumpUsagePercent = 0:10:100; % free-crosslinker consumption; seed excluded

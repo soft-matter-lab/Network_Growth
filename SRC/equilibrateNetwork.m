@@ -69,10 +69,11 @@ for it = 1:cfg.maxEq
     end
 end
 
-% Final speed metric at returned coordinates.
-F = networkForces(nodes, bonds, cfg.b, cfg.kT, cfg.kRep, rEq, cfg.L, ...
-    cfg.repelBondedPairs, cfg.useRepulsionBinning,     cfg.repulsionFullPairThreshold, cfg.kRepAnh, cfg.chainModel);
+% Overdamped speed requires forces at the returned coordinates. The damped
+% integrator reports vState; an additional force evaluation is unused there.
 if strcmp(integrator, 'overdamped')
+    F = networkForces(nodes, bonds, cfg.b, cfg.kT, cfg.kRep, rEq, cfg.L, ...
+        cfg.repelBondedPairs, cfg.useRepulsionBinning, cfg.repulsionFullPairThreshold, cfg.kRepAnh, cfg.chainModel);
     v = cfg.mobility * F;
 else
     v = vState;

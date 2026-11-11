@@ -1,9 +1,9 @@
-﻿% Offline visualization driver. Edit inputFolder, then run this file.
+% Offline visualization driver. Edit inputFolder, then run this file.
 % Accepts ONE simulation run folder or its dumps subfolder. No simulation runs.
 projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 addpath(fullfile(projectRoot,'SRC'));
 
-inputFolder = ''; % choose one saved run or dumps folder
+inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_preformed\replicates_20261110_162611_982\run_001_rep_01_xA_0.05_seed_11231_20261110_162612_024'; % choose one saved run or dumps folder
 
 vizOptions = struct();
 vizOptions.showNodeConnectivity = true; % degree 1 = light gray, degree fA = black; false = all black

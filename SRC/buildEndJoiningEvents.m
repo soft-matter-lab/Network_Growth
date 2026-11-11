@@ -7,31 +7,36 @@ events = zeros(0,4); % [type, end1, end2, weight]
 M = size(activeEnds,1);
 if M < 2, return; end
 adjNow = makeAdjacency(bonds,size(nodes,1));
+% Keep e-major/o-major ordering: the SSA cumulative sum depends on it.
+% Vectorize only destinations for one source, avoiding an M-by-M workspace.
+chunks = cell(M-1,1);
 for e = 1:M-1
     p1 = activeEnds(e,3); n1 = activeEnds(e,4);
-    for o = e+1:M
-        p2 = activeEnds(o,3); n2 = activeEnds(o,4);
-        if adjNow(p1,p2), continue; end
-        isLoop = p1 == p2;
-        if isLoop && (~cfg.allowSelfLoops || cfg.kSelfLoop == 0), continue; end
-        nTot = n1+n2;
-        if nTot <= 0 || nTot < 2*cfg.minKuhnEndEnd, continue; end
-        if isLoop
-            % Deliberate kinetic penalty, not the actual anchor displacement.
-            % For a bare destination n2=0 this is factor*b*sqrt(n1); for
-            % two dangling chains the squared coil sizes add: b^2*(n1+n2).
-            d2 = cfg.selfLoopDistanceFactor^2*nTot*cfg.b^2;
-            kJoin = cfg.kSelfLoop;
-        else
-            dv = nodes(p2,1:2)-nodes(p1,1:2);
-            dv = dv-cfg.L*round(dv/cfg.L);
-            d2 = sum(dv.^2);
-            kJoin = cfg.kEndEnd;
-        end
-        weight = kJoin*cfg.kChem/(pi*nTot*cfg.b^2)*exp(-d2/(nTot*cfg.b^2));
-        if weight > 1e-14
-            events(end+1,:) = [3,e,o,weight]; %#ok<AGROW>
-        end
+    o = (e+1:M)';
+    p2 = activeEnds(o,3);
+    nTot = n1+activeEnds(o,4);
+    isLoop = p1 == p2;
+    keep = ~adjNow(p1,p2)' & nTot>0 & nTot>=2*cfg.minKuhnEndEnd;
+    if ~cfg.allowSelfLoops || cfg.kSelfLoop == 0
+        keep = keep & ~isLoop;
     end
+    o = o(keep); p2 = p2(keep); nTot = nTot(keep); isLoop = isLoop(keep);
+    if isempty(o), chunks{e} = zeros(0,4); continue; end
+    dv = nodes(p2,1:2)-nodes(p1,1:2);
+    dv = dv-cfg.L*round(dv/cfg.L);
+    d2 = sum(dv.^2,2);
+    kJoin = repmat(cfg.kEndEnd,size(o));
+    if any(isLoop)
+        % Rate-only distance penalty for chain+bare and chain+chain loops.
+        d2(isLoop) = cfg.selfLoopDistanceFactor^2*nTot(isLoop)*cfg.b^2;
+        kJoin(isLoop) = cfg.kSelfLoop;
+    end
+    % Preserve the scalar formula's operation order and existing cutoff.
+    weight = kJoin*cfg.kChem./(pi*nTot*cfg.b^2).*exp(-d2./(nTot*cfg.b^2));
+    keep = weight>1e-14;
+    o = o(keep); weight = weight(keep);
+    chunks{e} = [repmat(3,size(o)),repmat(e,size(o)),o,weight];
 end
+events = vertcat(chunks{:});
+if isempty(events), events = zeros(0,4); end
 end

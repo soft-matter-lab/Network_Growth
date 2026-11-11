@@ -5,9 +5,11 @@ projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 addpath(fullfile(projectRoot,'SRC'));
 % Supply one run folder, or multiple replicates with identical physics and distinct seeds.
 % A single run has fitted curves but no replicate SD shading or bootstrap CI.
-runFolders = {}; % supply saved run folders, or select a batch below
+runFolders = {'E:\PhD\My Research\Polydisperse_network_growth\replicated_composition_20261102_201637_118_f4\replicated_composition_20261102_201637_118\run_001_rep_01_xA_0.01_seed_11231_20261102_201638_431',
+               'E:\PhD\My Research\Polydisperse_network_growth\replicated_composition_20261102_201637_118_f4\replicated_composition_20261102_201637_118\run_005_rep_02_xA_0.01_seed_9_20261103_001430_152',
+               'E:\PhD\My Research\Polydisperse_network_growth\replicated_composition_20261102_201637_118_f4\replicated_composition_20261102_201637_118\run_009_rep_03_xA_0.01_seed_7_20261103_025431_731'}; % supply saved run folders, or select a batch below
 % Alternatively select a batch and xA; leave runFolders empty to use these:
-batchFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_pkg_cleaned_sweeps\replicates_20261027_184159_810'; % contains batch_summary.mat from run_sweep_growing
+batchFolder = ''; % contains batch_summary.mat from run_sweep_growing
 selectedXA = .05;
 
 averageOptions = struct();

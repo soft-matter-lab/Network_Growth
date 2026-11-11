@@ -18,7 +18,7 @@ if nargin < 7, fullPairThreshold = 120; end
 
 useFullPairs = (~useBinning) || (N <= fullPairThreshold) || (rEq >= 0.5 * L);
 if useFullPairs
-    [ii, jj] = find(triu(true(N),1));
+    [ii, jj] = fullPairIndices(N);
 else
     [ii, jj] = binnedPairsPeriodic(nodes, L, rEq);
 end
@@ -48,6 +48,24 @@ if ~repelBondedPairs
     jj = jj(keep);
     rv = rv(keep,:);
     d = d(keep);
+end
+end
+
+function [ii, jj] = fullPairIndices(N)
+% Only indices depend on N. Coordinates, distances and bonded exclusions
+% must be recomputed on every call. Preserve find(triu(...)) ordering so
+% force accumulation and floating-point results remain unchanged.
+% Keep at most one set of indices, capped at 16 MB (two double vectors).
+persistent cachedN cachedI cachedJ
+if ~isempty(cachedN) && cachedN == N
+    ii = cachedI; jj = cachedJ;
+    return;
+end
+[ii, jj] = find(triu(true(N),1));
+if N*(N-1)/2 <= 1e6
+    cachedN = N; cachedI = ii; cachedJ = jj;
+else
+    cachedN = []; cachedI = []; cachedJ = [];
 end
 end
 

@@ -849,6 +849,54 @@ explicitly labels and uses the p->0 weight-distribution limit at n=1.
 
 ## Verification
 
+### Performance and reproducibility
+
+Both growth modes use the optimized shared `SRC` automatically, in single
+runs and sweeps. No new setting is needed. Event construction vectorizes
+destinations for one active end at a time and preallocates reservoir events.
+It preserves the original event order, arithmetic order, reaction rules and
+random-number sequence. Case A still uses its `1e-14` joining-rate cutoff;
+Case B still keeps every strictly positive joining rate.
+
+Mechanical relaxation reuses full-pair **indices** while the node count is
+unchanged; coordinates, periodic distances, exclusions and forces are always
+recomputed. The cache holds one node count and at most 16 MB of index data.
+Force-only spring calls skip unused energy calculations, and the damped
+integrator skips its unused final force evaluation. Overdamped relaxation
+still evaluates the final force needed for its speed metric. Force sums,
+integrator steps, tolerances, repulsive range and output sampling are unchanged.
+
+The performance regression suite compares against frozen original functions
+in `tests/reference/performance_baseline/`. It checks exact event tables,
+forces, energies, pair ordering, both integrators and 16 complete seeded
+trajectories, including self-loops, nucleation and mono/bi/trimodal preformed
+feeds. Comparisons include RNG state and selected runs' every-event dumps;
+only wall-clock runtime and deliberately different output paths are excluded.
+Exact equality is tested within one MATLAB runtime; it is not a promise of
+bitwise reproducibility across MATLAB versions or hardware.
+
+Measured on the development machine with MATLAB R2025b Update 4, using seeds
+11231, 9 and 7 and plotting/export disabled in both implementations:
+
+| Complete run | Original median | Optimized median | Speedup across the three seeds |
+| --- | ---: | ---: | ---: |
+| Growing, Ntotal=1000 | 9.81 s | 3.29 s | 2.88-3.24x |
+| Preformed, Ntotal=4000, N=[10 20 30] | 10.37 s | 5.24 s | 1.94-1.98x |
+
+Both benchmarks used xA=0.075, fA=4, Gaussian chains, fill-mode repulsion and
+self-loops enabled. All six full-run scientific results and RNG states matched
+exactly. Event construction alone improved 10.7-47.0x on saved growing states
+and 15.4x on a captured preformed intermediate state. These kernel timings
+are not whole-run speedups; benefits depend on network size and the time spent
+plotting, writing files and relaxing the network.
+
+```matlab
+results = runtests('tests/testPerformanceEquivalence.m');
+assertSuccess(results)
+```
+
+### Full suite
+
 ```matlab
 results = runtests('tests');
 assertSuccess(results)

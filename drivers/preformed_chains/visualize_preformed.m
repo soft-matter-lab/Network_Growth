@@ -3,7 +3,7 @@
 projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 addpath(fullfile(projectRoot,'SRC'));
 
-inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\runs_preformed\preformed_xA_0.05_seed_11231_20261109_130324_646'; % choose one saved run or dumps folder
+inputFolder = 'E:\PhD\My Research\Polydisperse_network_growth\Code\Network_Growth\batch_runs_preformed\replicates_20261110_162611_982\run_001_rep_01_xA_0.05_seed_11231_20261110_162612_024'; % choose one saved run or dumps folder
 
 vizOptions = struct();
 vizOptions.showNodeConnectivity = true; % degree 1 = light gray, degree fA = black; false = all black

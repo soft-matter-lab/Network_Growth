@@ -7,7 +7,7 @@ cfg = defaultNetworkBConfig();
 cfg.L = 100;
 cfg.b = 1.6;
 cfg.Ntotal = [];                 % [] = computed from areaFraction, L, b, scale
-cfg.NtotalScale = 1.4;
+cfg.NtotalScale = 1.75;
 cfg.areaFraction = 1;
 cfg.xA = .05;
 cfg.fA = 4;

@@ -11,14 +11,15 @@ function [c, E] = chainSpring(r, n, b, kT, model)
 % over-stretched chains stay finite.
 
 xc = 0.95;
-x = r ./ (n * b);
-
 switch lower(model)
     case 'gaussian'
         c = 3 * kT ./ (n * b^2);
-        E = 3 * kT * r.^2 ./ (2 * n * b^2);
+        if nargout > 1
+            E = 3 * kT * r.^2 ./ (2 * n * b^2);
+        end
 
     otherwise
+        x = r ./ (n * b);
         xs = min(x, xc);
         g  = xs .* (3 - xs.^2) ./ (1 - xs.^2);
         gp = 1 + 2 * (1 + xs.^2) ./ (1 - xs.^2).^2;
@@ -28,6 +29,8 @@ switch lower(model)
         c = kT * (gx ./ max(x, 1e-12)) ./ (n * b^2);
         c(x < 1e-12) = 3 * kT ./ (n(x < 1e-12) * b^2);
 
-        E = kT * n .* (xs.^2 / 2 - log(1 - xs.^2) + g .* dx + 0.5 * gp .* dx.^2);
+        if nargout > 1
+            E = kT * n .* (xs.^2 / 2 - log(1 - xs.^2) + g .* dx + 0.5 * gp .* dx.^2);
+        end
 end
 end
