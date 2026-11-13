@@ -16,8 +16,9 @@ editable settings and entry scripts only:
 | Saved-state visualizer / video / prestretch | `visualize_growing.m` | `visualize_preformed.m` |
 | Replicate distributions | `average_growing.m` | `average_preformed.m` |
 | Offline LAMMPS builder | `build_lammps_growing.m` | `build_lammps_preformed.m` |
+| Final paths / rigid clusters | `connectivity_growing.m` | `connectivity_preformed.m` |
 
-All ten drivers find `SRC` relative to their own location. New driver output
+All drivers find `SRC` relative to their own location. New driver output
 paths are anchored to the project root, independent of MATLAB's current folder.
 Case A uses `runs_pkg_cleaned` / `batch_runs_pkg_cleaned_sweeps`; Case B uses
 `runs_preformed` / `batch_runs_preformed`. Each sample has its own folder.
@@ -29,6 +30,54 @@ Use the drivers above; the archived scripts retain their old root-relative paths
 `buildGrowingChainEvents` and `buildPreformedChainEvents` implement separate
 chemistries. `runNetworkA_cleaned` and `runNetworkB_cleaned` are route wrappers;
 `runNetworkSweep` dispatches from `cfg.growthMode`.
+
+## Final-state paths and rigid clusters
+
+Run `connectivity_growing.m` or `connectivity_preformed.m`, set `inputFolder`
+(or use the folder picker), and select one saved run, its `dumps` folder, a
+sweep folder, or an unpacked simulation handoff. Both use the same shared
+`SRC/postprocessNetworkConnectivity.m`; no growth or relaxation is performed.
+The input is searched recursively for samples, stopping at each run to avoid
+double counting its raw-data copies. Final snapshots take precedence; the
+first 100%-usage checkpoint is never substituted for a final state. Older
+saved `results_struct.mat` and raw final MAT files also work.
+
+Each invocation creates a new `connectivity_final_*` output folder. It contains
+a CSV/JSON/MAT summary plus a subfolder per sample with:
+
+- `connectivity.mat/.json`: counts, certified cluster memberships, periodic
+  circuits, source bond-row mappings and numerical checks.
+- `paths_x.csv`, `paths_y.csv`: every selected circuit's ordered bonds and winding.
+- `rigid_clusters.csv`, `rigid_cluster_nodes.csv`, `junctions.csv`: cluster sizes,
+  winding rank, membership and shared junctions.
+- `paths_x.png`, `paths_y.png`, `rigid_clusters.png`: borderless snapshots at
+  600 dpi by default. All selected path bonds have the same red width; rigid
+  strands are blue, with the remaining strands light gray. Turn off
+  `saveSnapshots` for numerical output only.
+
+`N_path_x/y` is maximum total periodic winding with unit capacity per strand,
+followed by minimum total Kuhn count among maximum-capacity solutions. Nodes
+can be shared; bonds cannot. A circuit winding twice contributes two, so this
+is not always the number of distinct circuits. Self-loops and dangling chains
+do not enter the inter-junction graph. Both directions are computed.
+
+`N_rigid` counts maximal certified first-order rigid clusters containing at
+least three noncollinear junctions. Two-node bars are recorded separately.
+`wholeNetworkRigid` distinguishes a cluster containing **every** formed
+junction from a local cluster with count one. This is fixed-cell,
+one-cell-periodic bar rigidity at the saved coordinates, not a stiffness,
+prestress/contact, or variable-cell rigidity calculation. Cluster winding
+rank and coverage are reported separately; an isolated rigid triangle can
+have full junction coverage without periodic winding.
+
+The defaults reproduce the figure analysis: relative SVD tolerance `1e-9`,
+pair-distance tolerance `1e-8`, periodic image search `imageRange=2`, and rank
+stability checked over `1e-7` through `1e-10`. Uncertified/unfinished samples
+produce explicit failed rows, never zero-valued results. Larger image ranges
+can be selected in the driver. Exact clique enumeration and dense SVD can
+be expensive for large networks. Paths require Optimization Toolbox
+[`linprog`](https://www.mathworks.com/help/optim/ug/linprog.html), using
+`dual-simplex-highs` (MATLAB R2024a or newer); no Python dependency is needed.
 
 ## Preformed chains (Case B)
 

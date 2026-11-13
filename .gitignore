@@ -29,6 +29,7 @@ tests/*
 !tests/testGrowthModeIntegration.m
 !tests/testNetworkColors.m
 !tests/testPerformanceEquivalence.m
+!tests/testNetworkConnectivity.m
 !tests/reference/
 tests/reference/*
 !tests/reference/performance_baseline/
